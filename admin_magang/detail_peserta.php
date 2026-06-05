@@ -139,18 +139,18 @@ include 'layouts/navbar.php';
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm rounded-3 mb-4">
                 <div class="card-body p-4">
-                    <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-address-card me-2"></i> Identitas & Kontak</h6>
-                    <table class="table table-borderless table-sm mb-4">
-                        <tr><td width="35%" class="text-muted">No. HP (WA)</td><td class="fw-bold"><?php echo htmlspecialchars($data['no_hp']); ?></td></tr>
-                        <tr><td class="text-muted">Alamat Domisili</td><td class="fw-bold"><?php echo nl2br(htmlspecialchars($data['alamat'])); ?></td></tr>
-                    </table>
+                <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-address-card me-2"></i> Identitas & Kontak</h6>
+                <table class="table table-borderless table-sm mb-4">
+                    <tr><td width="35%" class="text-muted">No. HP (WA)</td><td class="fw-bold"><?php echo htmlspecialchars($data['no_hp'] ?? ''); ?></td></tr>
+                    <tr><td class="text-muted">Alamat Domisili</td><td class="fw-bold"><?php echo nl2br(htmlspecialchars($data['alamat'] ?? '')); ?></td></tr>
+                </table>
 
-                    <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-building me-2"></i> Data Instansi</h6>
-                    <table class="table table-borderless table-sm mb-4">
-                        <tr><td width="35%" class="text-muted">Asal Sekolah/Kampus</td><td class="fw-bold"><?php echo htmlspecialchars($data['asal_instansi']); ?></td></tr>
-                        <tr><td class="text-muted">Alamat Instansi</td><td class="fw-bold"><?php echo nl2br(htmlspecialchars($data['alamat_instansi'])); ?></td></tr>
-                        <tr><td class="text-muted">No. HP Pembimbing</td><td class="fw-bold"><?php echo htmlspecialchars($data['no_hp_pendamping']); ?></td></tr>
-                    </table>
+                <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-building me-2"></i> Data Instansi</h6>
+                <table class="table table-borderless table-sm mb-4">
+                    <tr><td width="35%" class="text-muted">Asal Sekolah/Kampus</td><td class="fw-bold"><?php echo htmlspecialchars($data['asal_instansi'] ?? ''); ?></td></tr>
+                    <tr><td class="text-muted">Alamat Instansi</td><td class="fw-bold"><?php echo nl2br(htmlspecialchars($data['alamat_instansi'] ?? '')); ?></td></tr>
+                    <tr><td class="text-muted">No. HP Pembimbing</td><td class="fw-bold"><?php echo htmlspecialchars($data['no_hp_pendamping'] ?? ''); ?></td></tr>
+                </table>
 
                     <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-folder-open me-2"></i> Dokumen Pengajuan (Dari Peserta)</h6>
                     <div class="d-flex gap-3">

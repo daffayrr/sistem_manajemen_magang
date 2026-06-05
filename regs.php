@@ -83,7 +83,7 @@
     
     <div class="text-center mt-4 pt-3 border-top">
         <small class="text-muted">Sudah punya akun?</small><br>
-        <a href="index.php" class="text-decoration-none fw-bold" style="color: #0d2141;">Login di sini</a>
+        <a type="submit" href="index.php" class="text-decoration-none fw-bold" style="color: #0d2141;">Login di sini</a>
     </div>
 </div>
 
