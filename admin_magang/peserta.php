@@ -46,7 +46,7 @@ if (isset($_GET['aksi']) && isset($_GET['id'])) {
 }
 
 // ==========================================================
-// 3. PENGAMBILAN DATA (TABEL)
+// 3. PENGAMBILAN DATA (TABEL); FIFO DI SINI
 // ==========================================================
 $filter_status = $_GET['filter'] ?? 'Menunggu';
 $keyword       = $_GET['q'] ?? '';
@@ -56,7 +56,7 @@ $query = "SELECT p.*, u.nama_lengkap, u.asal_instansi, u.foto_profil, u.email
           FROM pendaftaran p
           JOIN peserta u ON p.id_peserta = u.id_peserta
           WHERE p.status_verifikasi = '$filter_status' $search_sql
-          ORDER BY p.tgl_daftar ASC";
+          ORDER BY p.tgl_daftar ASC"; // Ini fifo ygy
 
 $result = mysqli_query($koneksi, $query);
 
