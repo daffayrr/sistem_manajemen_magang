@@ -52,6 +52,7 @@ $filter_status = $_GET['filter'] ?? 'Menunggu';
 $keyword       = $_GET['q'] ?? '';
 $search_sql    = !empty($keyword) ? "AND (u.nama_lengkap LIKE '%$keyword%' OR u.asal_instansi LIKE '%$keyword%')" : "";
 
+// QUERY FIFO, INGATTT
 $query = "SELECT p.*, u.nama_lengkap, u.asal_instansi, u.foto_profil, u.email 
           FROM pendaftaran p
           JOIN peserta u ON p.id_peserta = u.id_peserta

@@ -1,0 +1,24 @@
+{
+  "name": "sistem_manajemen_magang",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daffayrr/sistem_manajemen_magang.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/daffayrr/sistem_manajemen_magang/issues"
+  },
+  "homepage": "https://github.com/daffayrr/sistem_manajemen_magang#readme",
+  "devDependencies": {
+    "cypress": "^15.16.0"
+  }
+}
