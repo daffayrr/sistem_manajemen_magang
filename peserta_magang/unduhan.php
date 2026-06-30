@@ -9,15 +9,17 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] != 'login' || $_SESSION['
 
 include '../config/database.php';
 
-$id_peserta = $_SESSION['peserta_id'];
+/** @var mysqli $koneksi */
+
+$id_user = $_SESSION['peserta_id'];
 
 // 2. AMBIL DATA PENDAFTARAN TERAKHIR (Tanpa JOIN tabel Kuota)
-$query = "SELECT * FROM pendaftaran WHERE id_peserta = '$id_peserta' ORDER BY id_pendaftaran DESC LIMIT 1";
+$query = "SELECT * FROM pendaftaran WHERE id_user = '$id_user' ORDER BY id_daftar DESC LIMIT 1";
 $result = mysqli_query($koneksi, $query);
 $data   = mysqli_fetch_assoc($result);
 
 // Default state jika belum pernah daftar
-$status = $data['status_verifikasi'] ?? 'Belum Daftar';
+$status = $data['status'] ?? 'Belum Daftar';
 $file_balasan    = $data['file_balasan'] ?? null;
 $file_sertifikat = $data['file_sertifikat'] ?? null;
 $file_keterangan = $data['file_keterangan'] ?? null;

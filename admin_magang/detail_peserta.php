@@ -12,7 +12,9 @@ if ($status_login != 'login' || $role_akses != 'Admin') {
 
 include '../config/database.php';
 
-$id_pendaftaran = $_GET['id'] ?? 0;
+/** @var mysqli $koneksi */
+
+$id_daftar = $_GET['id'] ?? 0;
 $msg_type = "";
 $msg_text = "";
 
@@ -23,14 +25,14 @@ $allowed_ext = ['pdf', 'jpg', 'jpeg', 'png'];
 
 // A. Upload Surat Balasan (Fase Diterima)
 if (isset($_POST['upload_balasan'])) {
-    $id_peserta_doc = $_POST['id_peserta'];
+    $id_user_doc = $_POST['id_user'];
     
     if (!empty($_FILES['file_balasan']['name'])) {
         $ext = strtolower(pathinfo($_FILES['file_balasan']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, $allowed_ext)) {
-            $nama_file = $id_peserta_doc . "_BALASAN_" . time() . "." . $ext;
+            $nama_file = $id_user_doc . "_BALASAN_" . time() . "." . $ext;
             if (move_uploaded_file($_FILES['file_balasan']['tmp_name'], "../uploads/" . $nama_file)) {
-                mysqli_query($koneksi, "UPDATE pendaftaran SET file_balasan='$nama_file' WHERE id_pendaftaran='$id_pendaftaran'");
+                mysqli_query($koneksi, "UPDATE pendaftaran SET file_balasan='$nama_file' WHERE id_daftar='$id_daftar'");
                 $msg_type = "success"; $msg_text = "Surat Balasan berhasil diunggah.";
             }
         } else {
@@ -41,15 +43,15 @@ if (isset($_POST['upload_balasan'])) {
 
 // B. Upload Dokumen Akhir (Fase Selesai)
 if (isset($_POST['upload_akhir'])) {
-    $id_peserta_doc = $_POST['id_peserta'];
+    $id_user_doc = $_POST['id_user'];
 
     // 1. Upload Sertifikat (+Nilai)
     if (!empty($_FILES['file_sertifikat']['name'])) {
         $ext = strtolower(pathinfo($_FILES['file_sertifikat']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, $allowed_ext)) {
-            $nama_sertif = $id_peserta_doc . "_SERTIFIKAT_" . time() . "." . $ext;
+            $nama_sertif = $id_user_doc . "_SERTIFIKAT_" . time() . "." . $ext;
             if (move_uploaded_file($_FILES['file_sertifikat']['tmp_name'], "../uploads/" . $nama_sertif)) {
-                mysqli_query($koneksi, "UPDATE pendaftaran SET file_sertifikat='$nama_sertif' WHERE id_pendaftaran='$id_pendaftaran'");
+                mysqli_query($koneksi, "UPDATE pendaftaran SET file_sertifikat='$nama_sertif' WHERE id_daftar='$id_daftar'");
                 $msg_type = "success"; $msg_text = "Dokumen Akhir berhasil diperbarui.";
             }
         }
@@ -59,9 +61,9 @@ if (isset($_POST['upload_akhir'])) {
     if (!empty($_FILES['file_keterangan']['name'])) {
         $ext = strtolower(pathinfo($_FILES['file_keterangan']['name'], PATHINFO_EXTENSION));
         if (in_array($ext, $allowed_ext)) {
-            $nama_ket = $id_peserta_doc . "_KETERANGAN_" . time() . "." . $ext;
+            $nama_ket = $id_user_doc . "_KETERANGAN_" . time() . "." . $ext;
             if (move_uploaded_file($_FILES['file_keterangan']['tmp_name'], "../uploads/" . $nama_ket)) {
-                mysqli_query($koneksi, "UPDATE pendaftaran SET file_keterangan='$nama_ket' WHERE id_pendaftaran='$id_pendaftaran'");
+                mysqli_query($koneksi, "UPDATE pendaftaran SET file_keterangan='$nama_ket' WHERE id_daftar='$id_daftar'");
                 $msg_type = "success"; $msg_text = "Dokumen Akhir berhasil diperbarui.";
             }
         }
@@ -71,10 +73,10 @@ if (isset($_POST['upload_akhir'])) {
 // ==========================================================
 // AMBIL DATA DETAIL
 // ==========================================================
-$query = "SELECT p.*, u.nama_lengkap, u.email, u.no_hp, u.asal_instansi, u.alamat_instansi, u.no_hp_pendamping, u.alamat, u.foto_profil, u.id_peserta 
+$query = "SELECT p.*, u.nama, u.email, u.no_hp, u.asal_instansi, u.alamat_instansi, u.no_hp_pendamping, u.alamat, u.foto_profil, u.id_user 
           FROM pendaftaran p
-          JOIN peserta u ON p.id_peserta = u.id_peserta
-          WHERE p.id_pendaftaran = '$id_pendaftaran'";
+          JOIN peserta u ON p.id_user = u.id_user
+          WHERE p.id_daftar = '$id_daftar'";
 $result = mysqli_query($koneksi, $query);
 $data = mysqli_fetch_assoc($result);
 
@@ -83,7 +85,7 @@ if (!$data) {
     exit();
 }
 
-$st = $data['status_verifikasi'];
+$st = $data['status'];
 
 include 'layouts/header.php';
 include 'layouts/sidebar.php';
@@ -111,9 +113,9 @@ include 'layouts/navbar.php';
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-3 text-center p-4 h-100">
                 <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem; font-weight: bold;">
-                    <?php echo substr($data['nama_lengkap'], 0, 1); ?>
+                    <?php echo substr($data['nama'], 0, 1); ?>
                 </div>
-                <h5 class="fw-bold mb-1"><?php echo htmlspecialchars($data['nama_lengkap']); ?></h5>
+                <h5 class="fw-bold mb-1"><?php echo htmlspecialchars($data['nama']); ?></h5>
                 <p class="text-muted small mb-3"><?php echo htmlspecialchars($data['email']); ?></p>
 
                 <?php 
@@ -154,8 +156,8 @@ include 'layouts/navbar.php';
 
                     <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-folder-open me-2"></i> Dokumen Pengajuan (Dari Peserta)</h6>
                     <div class="d-flex gap-3">
-                        <?php if(!empty($data['surat_pengantar'])): ?>
-                            <a href="../uploads/<?php echo $data['surat_pengantar']; ?>" target="_blank" class="btn btn-outline-danger fw-bold rounded-pill px-4"><i class="fa-solid fa-file-pdf me-2"></i> Surat Pengantar</a>
+                        <?php if(!empty($data['berkas'])): ?>
+                            <a href="../uploads/<?php echo $data['berkas']; ?>" target="_blank" class="btn btn-outline-danger fw-bold rounded-pill px-4"><i class="fa-solid fa-file-pdf me-2"></i> Surat Pengantar</a>
                         <?php endif; ?>
                         <?php if(!empty($data['proposal'])): ?>
                             <a href="../uploads/<?php echo $data['proposal']; ?>" target="_blank" class="btn btn-outline-primary fw-bold rounded-pill px-4"><i class="fa-solid fa-file-pdf me-2"></i> Proposal</a>
@@ -172,7 +174,7 @@ include 'layouts/navbar.php';
                 </div>
                 <div class="card-body p-4 pt-0">
                     <form action="" method="POST" enctype="multipart/form-data" class="bg-light p-3 rounded-3 border mb-3 d-flex align-items-end gap-3">
-                        <input type="hidden" name="id_peserta" value="<?php echo $data['id_peserta']; ?>">
+                        <input type="hidden" name="id_user" value="<?php echo $data['id_user']; ?>">
                         <div class="flex-grow-1">
                             <label class="form-label small fw-bold">Pilih File (PDF/JPG/PNG)</label>
                             <input type="file" name="file_balasan" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png" required>
@@ -201,7 +203,7 @@ include 'layouts/navbar.php';
                 </div>
                 <div class="card-body p-4 pt-0">
                     <form action="" method="POST" enctype="multipart/form-data" class="bg-light p-3 rounded-3 border mb-3">
-                        <input type="hidden" name="id_peserta" value="<?php echo $data['id_peserta']; ?>">
+                        <input type="hidden" name="id_user" value="<?php echo $data['id_user']; ?>">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Sertifikat + Nilai</label>

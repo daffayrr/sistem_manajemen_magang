@@ -12,6 +12,8 @@ if ($status_login != 'login' || $role_akses != 'Admin') {
 
 include '../config/database.php';
 
+/** @var mysqli $koneksi */
+
 $msg_type = "";
 $msg_text = "";
 

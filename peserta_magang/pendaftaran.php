@@ -9,7 +9,9 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] != 'login' || $_SESSION['
 
 include '../config/database.php';
 
-$id_peserta = $_SESSION['peserta_id'];
+/** @var mysqli $koneksi */
+
+$id_user = $_SESSION['peserta_id'];
 $msg_type = "";
 $msg_text = "";
 
@@ -52,24 +54,24 @@ if (isset($_POST['kirim_pendaftaran'])) {
                             asal_instansi = '$asal_instansi',
                             alamat_instansi = '$alamat_instansi',
                             no_hp_pendamping = '$no_hp_pendamping'
-                            WHERE id_peserta = '$id_peserta'";
+                            WHERE id_user = '$id_user'";
         
         if (mysqli_query($koneksi, $update_profil)) {
             
             // D. UPLOAD FILE
-            $nama_surat_baru = $id_peserta . "_SURAT_" . time() . "." . $ext_surat;
+            $nama_surat_baru = $id_user . "_SURAT_" . time() . "." . $ext_surat;
             $nama_prop_baru  = "";
             
             if (move_uploaded_file($file_surat['tmp_name'], "../uploads/" . $nama_surat_baru)) {
                 
                 if (!empty($file_prop['name'])) {
-                    $nama_prop_baru = $id_peserta . "_PROPOSAL_" . time() . "." . $ext_prop;
+                    $nama_prop_baru = $id_user . "_PROPOSAL_" . time() . "." . $ext_prop;
                     move_uploaded_file($file_prop['tmp_name'], "../uploads/" . $nama_prop_baru);
                 }
 
                 // E. SIMPAN PENDAFTARAN (Logika Baru tanpa id_kuota)
-                $query_simpan = "INSERT INTO pendaftaran (id_peserta, tgl_daftar, tanggal_mulai, tanggal_selesai, status_verifikasi, surat_pengantar, proposal) 
-                                    VALUES ('$id_peserta', NOW(), '$tanggal_mulai', '$tanggal_selesai', 'Menunggu', '$nama_surat_baru', '$nama_prop_baru')";
+                $query_simpan = "INSERT INTO pendaftaran (id_user, tgl_daftar, tanggal_mulai, tanggal_selesai, status, surat_pengantar, proposal) 
+                                    VALUES ('$id_user', NOW(), '$tanggal_mulai', '$tanggal_selesai', 'Menunggu', '$nama_surat_baru', '$nama_prop_baru')";
                 
                 if (mysqli_query($koneksi, $query_simpan)) {
                     $msg_type = "success";
@@ -94,7 +96,7 @@ if (isset($_POST['kirim_pendaftaran'])) {
 $sedang_daftar = false;
 $data_pendaftaran_aktif = null;
 
-$cek_status = mysqli_query($koneksi, "SELECT * FROM pendaftaran WHERE id_peserta = '$id_peserta' AND status_verifikasi IN ('Menunggu', 'Diterima') ORDER BY id_pendaftaran DESC LIMIT 1");
+$cek_status = mysqli_query($koneksi, "SELECT * FROM pendaftaran WHERE id_user = '$id_user' AND status IN ('Menunggu', 'Diterima') ORDER BY id_daftar DESC LIMIT 1");
 
 if (mysqli_num_rows($cek_status) > 0) {
     $sedang_daftar = true;
@@ -102,7 +104,7 @@ if (mysqli_num_rows($cek_status) > 0) {
 }
 
 // Ambil Data Profil
-$q_peserta = mysqli_query($koneksi, "SELECT * FROM peserta WHERE id_peserta = '$id_peserta'");
+$q_peserta = mysqli_query($koneksi, "SELECT * FROM peserta WHERE id_user = '$id_user'");
 $d_peserta = mysqli_fetch_assoc($q_peserta);
 if (!$d_peserta) $d_peserta = [];
 
@@ -131,7 +133,7 @@ include 'layouts/navbar.php';
         <div class="card border-0 shadow-sm rounded-3">
             <div class="card-body p-5 text-center">
                 <?php 
-                $st = $data_pendaftaran_aktif['status_verifikasi'];
+                $st = $data_pendaftaran_aktif['status'];
                 if ($st == 'Menunggu') { $icon = 'fa-clock'; $cls = 'warning'; $txt = 'Menunggu Verifikasi Admin'; }
                 elseif ($st == 'Diterima') { $icon = 'fa-circle-check'; $cls = 'success'; $txt = 'Selamat! Anda Berstatus Magang Aktif'; }
                 ?>
@@ -175,7 +177,7 @@ include 'layouts/navbar.php';
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label small fw-bold">Nama Lengkap</label>
-                                    <input type="text" class="form-control bg-light" value="<?php echo htmlspecialchars($d_peserta['nama_lengkap']??''); ?>" readonly>
+                                    <input type="text" class="form-control bg-light" value="<?php echo htmlspecialchars($d_peserta['nama']??''); ?>" readonly>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label small fw-bold">Email</label>

@@ -13,18 +13,18 @@ describe('Testing Fungsionalitas dan Navigasi Halaman Kelola Peserta', () => {
     });
   
     it('TC-01: Menguji navigasi pada Filter Status Peserta', () => {
-      // 1. Klik filter Diterima
-      cy.contains('Diterima (Aktif)').click();
+      // 1. Klik filter Diterima menggunakan target URL href (Paling Aman)
+      cy.get('a[href="peserta.php?filter=Diterima"]').click();
       cy.url().should('include', 'filter=Diterima');
       cy.go('back'); // Kembali ke halaman peserta awal
   
       // 2. Klik filter Ditolak
-      cy.contains('Ditolak').click();
+      cy.get('a[href="peserta.php?filter=Ditolak"]').click();
       cy.url().should('include', 'filter=Ditolak');
       cy.go('back');
   
       // 3. Klik filter Arsip (Selesai)
-      cy.contains('Arsip (Selesai)').click();
+      cy.get('a[href="peserta.php?filter=Selesai"]').click();
       cy.url().should('include', 'filter=Selesai');
       cy.go('back');
   

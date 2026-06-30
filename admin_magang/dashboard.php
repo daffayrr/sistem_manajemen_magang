@@ -12,19 +12,21 @@ if ($status_login != 'login' || $role_akses != 'Admin') {
     exit();
 }
 
-include '../config/database.php'; 
+include '../config/database.php';
+
+/** @var mysqli $koneksi */
 
 // =================================================================
 // 3. LOGIKA PENGAMBILAN DATA (REAL-TIME) - REVISI KUOTA GLOBAL
 // =================================================================
 
 // A. Ambil Data KUOTA GLOBAL
-$query_kuota = mysqli_query($koneksi, "SELECT kuota_maksimal FROM pengaturan_sistem LIMIT 1");
+$query_kuota = mysqli_query($koneksi, "SELECT jumlah_maks, sisa_kuota FROM kuota WHERE id_kuota = 1");
 $data_kuota  = mysqli_fetch_assoc($query_kuota);
-$jumlah_maksimal = $data_kuota['kuota_maksimal'] ?? 0;
+$jumlah_maksimal = $data_kuota['jumlah_maks'] ?? 0;
 
 // B. Hitung Peserta Aktif (Status 'Diterima' dan belum 'Selesai')
-$query_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status_verifikasi = 'Diterima'");
+$query_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status = 'Diterima'");
 $data_aktif  = mysqli_fetch_assoc($query_aktif);
 $jumlah_aktif = $data_aktif['total'];
 
@@ -32,16 +34,16 @@ $jumlah_aktif = $data_aktif['total'];
 $sisa_kuota = $jumlah_maksimal - $jumlah_aktif;
 
 // D. Hitung Jumlah MENUNGGU VERIFIKASI
-$query_waiting = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status_verifikasi = 'Menunggu'");
+$query_waiting = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status = 'Menunggu'");
 $data_waiting  = mysqli_fetch_assoc($query_waiting);
 $jumlah_menunggu = $data_waiting['total'];
 
 // E. Ambil Data Antrean FIFO (First In First Out)
 // Menampilkan pendaftar yang belum diverifikasi, diurutkan dari yang paling lama mendaftar
-$query_fifo = "SELECT p.id_pendaftaran, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, u.nama_lengkap, u.asal_instansi 
+$query_fifo = "SELECT p.id_daftar, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, u.nama, u.asal_instansi 
                FROM pendaftaran p
-               JOIN peserta u ON p.id_peserta = u.id_peserta
-               WHERE p.status_verifikasi = 'Menunggu'
+               JOIN peserta u ON p.id_user = u.id_user
+               WHERE p.status = 'Menunggu'
                ORDER BY p.tgl_daftar ASC 
                LIMIT 5"; 
 $result_fifo = mysqli_query($koneksi, $query_fifo);
@@ -135,7 +137,7 @@ include 'layouts/navbar.php';
                                 ?>
                                     <tr>
                                         <td class="ps-4"><?php echo $no++; ?></td>
-                                        <td class="fw-bold"><?php echo htmlspecialchars($row['nama_lengkap']); ?></td>
+                                        <td class="fw-bold"><?php echo htmlspecialchars($row['nama']); ?></td>
                                         <td><?php echo htmlspecialchars($row['asal_instansi']); ?></td>
                                         <td>
                                             <small class="text-muted">Mulai: <?php echo !empty($row['tanggal_mulai']) ? date('d M Y', strtotime($row['tanggal_mulai'])) : '<i class="text-danger">Belum diatur</i>'; ?></small><br>
@@ -148,7 +150,7 @@ include 'layouts/navbar.php';
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="detail_peserta.php?id=<?php echo $row['id_pendaftaran']; ?>" class="btn btn-sm btn-primary">
+                                            <a href="detail_peserta.php?id=<?php echo $row['id_daftar']; ?>" class="btn btn-sm btn-primary">
                                                 Verifikasi
                                             </a>
                                         </td>

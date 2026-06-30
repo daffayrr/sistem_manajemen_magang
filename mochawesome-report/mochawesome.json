@@ -1,0 +1,144 @@
+{
+  "stats": {
+    "suites": 1,
+    "tests": 3,
+    "passes": 3,
+    "pending": 0,
+    "failures": 0,
+    "start": "2026-06-30T03:19:44.451Z",
+    "end": "2026-06-30T03:20:00.748Z",
+    "duration": 16297,
+    "testsRegistered": 3,
+    "passPercent": 100,
+    "pendingPercent": 0,
+    "other": 0,
+    "hasOther": false,
+    "skipped": 0,
+    "hasSkipped": false
+  },
+  "results": [
+    {
+      "uuid": "25e73515-fada-45f7-872b-a73e358db304",
+      "title": "",
+      "fullFile": "cypress\\e2e\\BTKP-SYSTEM\\peserta\\4_unduhan.cy.js",
+      "file": "cypress\\e2e\\BTKP-SYSTEM\\peserta\\4_unduhan.cy.js",
+      "beforeHooks": [],
+      "afterHooks": [],
+      "tests": [],
+      "suites": [
+        {
+          "uuid": "7424041a-e17c-4348-8a52-f8fe192c451a",
+          "title": "Testing Dinamis Halaman Unduhan & Hasil Seleksi",
+          "fullFile": "",
+          "file": "",
+          "beforeHooks": [],
+          "afterHooks": [],
+          "tests": [
+            {
+              "title": "TC-01: Memvalidasi tampilan Unduhan saat status \"Belum Daftar\"",
+              "fullTitle": "Testing Dinamis Halaman Unduhan & Hasil Seleksi TC-01: Memvalidasi tampilan Unduhan saat status \"Belum Daftar\"",
+              "timedOut": null,
+              "duration": 8376,
+              "state": "passed",
+              "speed": "medium",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "cy.visit('/peserta_magang/unduhan.php');\n// Memvalidasi Card peringatan belum ada data\ncy.contains('Belum Ada Data').should('be.visible');\ncy.contains('Anda belum melakukan pengajuan magang.').should('be.visible');\n// Menguji tombol navigasi \"Daftar Sekarang\" dan ditarik kembali\ncy.contains('Daftar Sekarang').click();\n// Pastikan tombol mengarah ke form pendaftaran\ncy.url().should('include', 'pendaftaran.php');\n// Putar balik ke halaman unduhan\ncy.go('back');\ncy.url().should('include', '/peserta_magang/unduhan.php');",
+              "err": {},
+              "uuid": "b88ab9b5-3f88-4615-829d-99f0e1896776",
+              "parentUUID": "7424041a-e17c-4348-8a52-f8fe192c451a",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-02: Melakukan Pendaftaran agar status berubah menjadi \"Menunggu\"",
+              "fullTitle": "Testing Dinamis Halaman Unduhan & Hasil Seleksi TC-02: Melakukan Pendaftaran agar status berubah menjadi \"Menunggu\"",
+              "timedOut": null,
+              "duration": 5455,
+              "state": "passed",
+              "speed": "medium",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "// Skenario ini bertugas mendaftarkan user agar statusnya naik level\ncy.visit('/peserta_magang/pendaftaran.php');\n// Mengisi form pendaftaran\ncy.get('input[name=\"no_hp\"]').clear().type('0899999999');\ncy.get('textarea[name=\"alamat\"]').type('Jl. Ringroad Selatan');\ncy.get('input[name=\"asal_instansi\"]').clear().type('Universitas Alma Ata');\ncy.get('textarea[name=\"alamat_instansi\"]').type('Bantul');\ncy.get('input[name=\"no_hp_pendamping\"]').type('0855555555');\ncy.get('input[name=\"tanggal_mulai\"]').type('2026-08-01');\ncy.get('input[name=\"tanggal_selesai\"]').type('2026-11-01');\ncy.get('input[name=\"surat_pengantar\"]').selectFile('cypress/fixtures/surat_dummy.pdf');\n// Submit form pendaftaran\ncy.on('window:confirm', () => true);\ncy.get('button[name=\"kirim_pendaftaran\"]').click();\n// Pastikan sukses\ncy.get('.alert-success').should('be.visible');",
+              "err": {},
+              "uuid": "0d1f0f03-6fc7-405a-950f-898b543a5b0c",
+              "parentUUID": "7424041a-e17c-4348-8a52-f8fe192c451a",
+              "isHook": false,
+              "skipped": false
+            },
+            {
+              "title": "TC-03: Memvalidasi tampilan Unduhan setelah status berubah menjadi \"Menunggu\"",
+              "fullTitle": "Testing Dinamis Halaman Unduhan & Hasil Seleksi TC-03: Memvalidasi tampilan Unduhan setelah status berubah menjadi \"Menunggu\"",
+              "timedOut": null,
+              "duration": 2144,
+              "state": "passed",
+              "speed": "fast",
+              "pass": true,
+              "fail": false,
+              "pending": false,
+              "context": null,
+              "code": "// Karena di TC-02 user sudah daftar, halaman ini harusnya berubah total\ncy.visit('/peserta_magang/unduhan.php');\n// 1. Validasi Widget Status Kiri\ncy.contains('Status Saat Ini').should('be.visible');\ncy.contains('Menunggu Verifikasi').should('be.visible');\ncy.contains('Berkas sedang dalam antrean pemeriksaan admin.').should('be.visible');\n// Pastikan tanggal pelaksanaan yang tadi diinput muncul di layar\ncy.contains('01 Aug 26 - 01 Nov 26').should('be.visible');\n// 2. Validasi Widget Unduhan Kanan\ncy.contains('Berkas Unduhan Resmi').should('be.visible');\n// Karena status masih Menunggu, file belum ada\ncy.contains('Belum Ada Berkas').should('be.visible');\ncy.contains('Berkas unduhan akan muncul setelah status Anda berubah menjadi Aktif Magang').should('be.visible');",
+              "err": {},
+              "uuid": "58871d24-4e2b-4b97-8604-41b7f7e04bb6",
+              "parentUUID": "7424041a-e17c-4348-8a52-f8fe192c451a",
+              "isHook": false,
+              "skipped": false
+            }
+          ],
+          "suites": [],
+          "passes": [
+            "b88ab9b5-3f88-4615-829d-99f0e1896776",
+            "0d1f0f03-6fc7-405a-950f-898b543a5b0c",
+            "58871d24-4e2b-4b97-8604-41b7f7e04bb6"
+          ],
+          "failures": [],
+          "pending": [],
+          "skipped": [],
+          "duration": 15975,
+          "root": false,
+          "rootEmpty": false,
+          "_timeout": 2000
+        }
+      ],
+      "passes": [],
+      "failures": [],
+      "pending": [],
+      "skipped": [],
+      "duration": 0,
+      "root": true,
+      "rootEmpty": true,
+      "_timeout": 2000
+    }
+  ],
+  "meta": {
+    "mocha": {
+      "version": "7.2.0"
+    },
+    "mochawesome": {
+      "options": {
+        "quiet": false,
+        "reportFilename": "mochawesome",
+        "saveHtml": true,
+        "saveJson": true,
+        "consoleReporter": "spec",
+        "useInlineDiffs": false,
+        "code": true
+      },
+      "version": "7.1.4"
+    },
+    "marge": {
+      "options": {
+        "charts": true,
+        "reportPageTitle": "Blackbox Test Sistem Magang BTKP",
+        "embeddedScreenshots": true,
+        "inlineAssets": true,
+        "saveAllAttempts": false
+      },
+      "version": "6.3.2"
+    }
+  }
+}

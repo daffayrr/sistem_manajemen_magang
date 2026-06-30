@@ -13,6 +13,8 @@ if ($status_login != 'login' || $role_akses != 'Admin') {
 
 include '../config/database.php';
 
+/** @var mysqli $koneksi */
+
 // Variabel Notifikasi
 $msg_type = "";
 $msg_text = "";
@@ -204,10 +206,11 @@ function konfirmasiHapus(id, nama) {
 
 <?php if (!empty($msg_type)): ?>
 <script>
-    Swal.fire({
+    Swal.fire({ 
         icon: '<?php echo ($msg_type=="sukses") ? "success" : "error"; ?>',
         title: '<?php echo ($msg_type=="sukses") ? "Berhasil!" : "Gagal!"; ?>',
-        text: '<?php echo $msg_text; ?>',
+        // PERBAIKAN: Tambahkan addslashes() di bawah ini
+        text: '<?php echo addslashes($msg_text); ?>', 
         confirmButtonColor: '#0d2141'
     });
 </script>

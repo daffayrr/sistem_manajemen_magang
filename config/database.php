@@ -1,3 +1,4 @@
+-- Active: 1718071596031@@127.0.0.1@3306@db_magang_btkp
 <?php
 // File: config/database.php
 

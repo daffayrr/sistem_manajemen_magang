@@ -1,7 +1,9 @@
 <?php
 session_start();
 // Hubungkan ke database
-include 'config/database.php';
+include '../config/database.php';
+
+/** @var mysqli $koneksi */
 
 // Tangkap input dan amankan dari SQL Injection
 $username = mysqli_real_escape_string($koneksi, $_POST['username']);
@@ -22,7 +24,7 @@ if ($cek_admin > 0) {
     
     // Data Spesifik Admin
     $_SESSION['admin_id']    = $data['id_admin'];
-    $_SESSION['admin_nama']  = $data['nama_lengkap']; 
+    $_SESSION['admin_nama']  = $data['nama']; 
     $_SESSION['admin_role']  = $data['role']; // Isinya 'Admin'
 
     // Redirect ke Dashboard Admin
@@ -45,8 +47,8 @@ if ($cek_peserta > 0) {
     $_SESSION['role_akses']  = "Peserta"; // KUNCI UTAMA
     
     // Data Spesifik Peserta
-    $_SESSION['peserta_id']    = $data['id_peserta'];
-    $_SESSION['peserta_nama']  = $data['nama_lengkap'];
+    $_SESSION['peserta_id']    = $data['id_user'];
+    $_SESSION['peserta_nama']  = $data['nama'];
     $_SESSION['peserta_email'] = $data['email'];
     $_SESSION['peserta_foto']  = $data['foto_profil'];
 

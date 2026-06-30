@@ -12,6 +12,8 @@ if ($status_login != 'login' || $role_akses != 'Admin') {
 
 include '../config/database.php';
 
+/** @var mysqli $koneksi */
+
 $msg_type = "";
 $msg_text = "";
 
@@ -20,10 +22,10 @@ $msg_text = "";
 // ==========================================================
 
 if (isset($_POST['update_kuota'])) {
-    $kuota_baru = (int) $_POST['kuota_maksimal'];
+    $kuota_baru = (int) $_POST['jumlah_maks'];
     
-    // Update data kuota di tabel pengaturan_sistem
-    $query = "UPDATE pengaturan_sistem SET kuota_maksimal = '$kuota_baru'";
+    // Update data kuota di tabel kuota
+    $query = "UPDATE kuota SET jumlah_maks = '$kuota_baru'";
     
     if (mysqli_query($koneksi, $query)) {
         $msg_type = "success"; 
@@ -39,12 +41,12 @@ if (isset($_POST['update_kuota'])) {
 // ==========================================================
 
 // 1. Ambil nilai kuota maksimal
-$query_kuota = mysqli_query($koneksi, "SELECT kuota_maksimal FROM pengaturan_sistem LIMIT 1");
+$query_kuota = mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota LIMIT 1");
 $data_kuota = mysqli_fetch_assoc($query_kuota);
-$kuota_sekarang = $data_kuota['kuota_maksimal'] ?? 0;
+$kuota_sekarang = $data_kuota['jumlah_maks'] ?? 0;
 
 // 2. Ambil jumlah peserta yang saat ini sedang aktif (Diterima)
-$query_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status_verifikasi = 'Diterima'");
+$query_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status = 'Diterima'");
 $data_aktif  = mysqli_fetch_assoc($query_aktif);
 $jumlah_aktif = $data_aktif['total'];
 
@@ -89,7 +91,7 @@ include 'layouts/navbar.php';
                     <form action="" method="POST">
                         <div class="mb-4">
                             <label class="form-label fw-bold text-dark">Kapasitas Maksimal Magang (Orang)</label>
-                            <input type="number" name="kuota_maksimal" class="form-control form-control-lg" value="<?php echo $kuota_sekarang; ?>" min="1" required>
+                            <input type="number" name="jumlah_maks" class="form-control form-control-lg" value="<?php echo $kuota_sekarang; ?>" min="1" required>
                             
                             <div class="form-text mt-3 text-muted bg-light p-3 rounded border">
                                 <div class="d-flex justify-content-between mb-1">

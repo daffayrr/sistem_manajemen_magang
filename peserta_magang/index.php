@@ -8,17 +8,19 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] != 'login' || $_SESSION['
 }
 
 include '../config/database.php';
-$id_peserta = $_SESSION['peserta_id'];
+
+/** @var mysqli $koneksi */
+$id_user = $_SESSION['peserta_id'];
 
 // 2. AMBIL DATA PESERTA
-$q_peserta = mysqli_query($koneksi, "SELECT * FROM peserta WHERE id_peserta = '$id_peserta'");
+$q_peserta = mysqli_query($koneksi, "SELECT * FROM peserta WHERE id_user = '$id_user'");
 $d_peserta = mysqli_fetch_assoc($q_peserta);
 
 // 3. AMBIL DATA PENDAFTARAN TERAKHIR (Tanpa JOIN Kuota)
-$q_daftar = mysqli_query($koneksi, "SELECT * FROM pendaftaran WHERE id_peserta = '$id_peserta' ORDER BY id_pendaftaran DESC LIMIT 1");
+$q_daftar = mysqli_query($koneksi, "SELECT * FROM pendaftaran WHERE id_user = '$id_user' ORDER BY id_daftar DESC LIMIT 1");
 $d_daftar = mysqli_fetch_assoc($q_daftar);
 
-$status_magang = $d_daftar ? $d_daftar['status_verifikasi'] : 'Belum Daftar';
+$status_magang = $d_daftar ? $d_daftar['status'] : 'Belum Daftar';
 
 // 4. AMBIL DATA INFORMASI / PENGUMUMAN DARI ADMIN
 $q_info = mysqli_query($koneksi, "SELECT * FROM informasi ORDER BY id DESC LIMIT 1");
@@ -39,7 +41,7 @@ include 'layouts/navbar.php';
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <span class="badge bg-white text-primary mb-3 px-3 py-2 rounded-pill fw-bold">Portal Peserta</span>
-                    <h2 class="fw-bold mb-2">Halo, <?php echo htmlspecialchars($d_peserta['nama_lengkap']); ?>! 👋</h2>
+                    <h2 class="fw-bold mb-2">Halo, <?php echo htmlspecialchars($d_peserta['nama']); ?>! 👋</h2>
                     <p class="mb-0 opacity-75 fs-6">Selamat datang di Sistem Informasi Penerimaan Magang Balai Teknologi Komunikasi Pendidikan (BTKP) DIY.</p>
                 </div>
                 <div class="col-md-4 text-md-end mt-4 mt-md-0 d-none d-md-block">

@@ -12,6 +12,8 @@ if ($status_login != 'login' || $role_akses != 'Admin') {
 
 include '../config/database.php';
 
+/** @var mysqli $koneksi */
+
 // ==========================================================
 // 2. LOGIKA AKSI VERIFIKASI & ARSIP
 // ==========================================================
@@ -21,26 +23,26 @@ if (isset($_GET['aksi']) && isset($_GET['id'])) {
 
     if ($aksi == 'terima') {
         // Cek Kuota Global vs Peserta Aktif
-        $q_maks = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT kuota_maksimal FROM pengaturan_sistem LIMIT 1"));
-        $q_aktf = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as tot FROM pendaftaran WHERE status_verifikasi='Diterima'"));
+        $q_maks = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT jumlah_maks FROM pengaturan_sistem LIMIT 1"));
+        $q_aktf = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as tot FROM pendaftaran WHERE status='Diterima'"));
         
-        $sisa = $q_maks['kuota_maksimal'] - $q_aktf['tot'];
+        $sisa = $q_maks['jumlah_maks'] - $q_aktf['tot'];
 
         if ($sisa > 0) {
-            mysqli_query($koneksi, "UPDATE pendaftaran SET status_verifikasi='Diterima', tgl_verifikasi=NOW() WHERE id_pendaftaran='$id_daftar'");
+            mysqli_query($koneksi, "UPDATE pendaftaran SET status='Diterima', tgl_verifikasi=NOW() WHERE id_daftar='$id_daftar'");
             $msg_type = "sukses"; $msg_text = "Peserta Diterima. Kuota magang berkurang 1.";
         } else {
             $msg_type = "gagal"; $msg_text = "Gagal! Kuota Magang saat ini Penuh. Tunggu ada peserta yang selesai.";
         }
     } elseif ($aksi == 'tolak') {
-        mysqli_query($koneksi, "UPDATE pendaftaran SET status_verifikasi='Ditolak', tgl_verifikasi=NOW() WHERE id_pendaftaran='$id_daftar'");
+        mysqli_query($koneksi, "UPDATE pendaftaran SET status='Ditolak', tgl_verifikasi=NOW() WHERE id_daftar='$id_daftar'");
         $msg_type = "sukses"; $msg_text = "Pengajuan Magang Ditolak.";
     } elseif ($aksi == 'batal') {
-        mysqli_query($koneksi, "UPDATE pendaftaran SET status_verifikasi='Menunggu', tgl_verifikasi=NULL WHERE id_pendaftaran='$id_daftar'");
+        mysqli_query($koneksi, "UPDATE pendaftaran SET status='Menunggu', tgl_verifikasi=NULL WHERE id_daftar='$id_daftar'");
         $msg_type = "sukses"; $msg_text = "Status dikembalikan ke Menunggu.";
     } elseif ($aksi == 'selesai') {
         // FITUR BARU: Masuk Arsip
-        mysqli_query($koneksi, "UPDATE pendaftaran SET status_verifikasi='Selesai' WHERE id_pendaftaran='$id_daftar'");
+        mysqli_query($koneksi, "UPDATE pendaftaran SET status='Selesai' WHERE id_daftar='$id_daftar'");
         $msg_type = "sukses"; $msg_text = "Magang Selesai! Data dipindah ke Arsip, Kuota kembali kosong (+1).";
     }
 }
@@ -50,13 +52,13 @@ if (isset($_GET['aksi']) && isset($_GET['id'])) {
 // ==========================================================
 $filter_status = $_GET['filter'] ?? 'Menunggu';
 $keyword       = $_GET['q'] ?? '';
-$search_sql    = !empty($keyword) ? "AND (u.nama_lengkap LIKE '%$keyword%' OR u.asal_instansi LIKE '%$keyword%')" : "";
+$search_sql    = !empty($keyword) ? "AND (u.nama LIKE '%$keyword%' OR u.asal_instansi LIKE '%$keyword%')" : "";
 
 // QUERY FIFO, INGATTT
-$query = "SELECT p.*, u.nama_lengkap, u.asal_instansi, u.foto_profil, u.email 
+$query = "SELECT p.*, u.nama, u.asal_instansi, u.foto_profil, u.email 
           FROM pendaftaran p
-          JOIN peserta u ON p.id_peserta = u.id_peserta
-          WHERE p.status_verifikasi = '$filter_status' $search_sql
+          JOIN peserta u ON p.id_user = u.id_user
+          WHERE p.status = '$filter_status' $search_sql
           ORDER BY p.tgl_daftar ASC"; // Ini fifo ygy
 
 $result = mysqli_query($koneksi, $query);
@@ -131,14 +133,14 @@ include 'layouts/navbar.php';
                     <tbody>
                         <?php if (mysqli_num_rows($result) > 0) { while ($row = mysqli_fetch_assoc($result)) { ?>
                             <tr>
-                                <td class="ps-4 text-muted">#<?php echo str_pad($row['id_pendaftaran'], 4, '0', STR_PAD_LEFT); ?></td>
+                                <td class="ps-4 text-muted">#<?php echo str_pad($row['id_daftar'], 4, '0', STR_PAD_LEFT); ?></td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="rounded-circle bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px;">
-                                            <?php echo substr($row['nama_lengkap'], 0, 1); ?>
+                                            <?php echo substr($row['nama'], 0, 1); ?>
                                         </div>
                                         <div>
-                                            <span class="d-block fw-bold text-dark"><?php echo htmlspecialchars($row['nama_lengkap']); ?></span>
+                                            <span class="d-block fw-bold text-dark"><?php echo htmlspecialchars($row['nama']); ?></span>
                                             <small class="text-muted" style="font-size: 0.75rem;"><i class="fa-solid fa-clock me-1"></i> Daftar: <?php echo date('d/m/Y H:i', strtotime($row['tgl_daftar'])); ?></small>
                                         </div>
                                     </div>
@@ -149,27 +151,27 @@ include 'layouts/navbar.php';
                                     <span class="text-muted small">Selesai: <?php echo !empty($row['tanggal_selesai']) ? date('d M Y', strtotime($row['tanggal_selesai'])) : '-'; ?></span>
                                 </td>
                                 <td class="text-center">
-                                    <?php if (!empty($row['surat_pengantar'])): ?>
-                                        <a href="../uploads/<?php echo $row['surat_pengantar']; ?>" target="_blank" class="text-danger" title="Lihat Surat Pengantar"><i class="fa-solid fa-file-pdf fa-lg"></i></a>
+                                    <?php if (!empty($row['berkas'])): ?>
+                                        <a href="../uploads/<?php echo $row['berkas']; ?>" target="_blank" class="text-danger" title="Lihat Surat Pengantar"><i class="fa-solid fa-file-pdf fa-lg"></i></a>
                                     <?php else: ?> - <?php endif; ?>
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a href="detail_peserta.php?id=<?php echo $row['id_pendaftaran']; ?>" class="btn btn-sm btn-outline-primary fw-bold px-3 me-1 rounded-pill">Detail</a>
+                                    <a href="detail_peserta.php?id=<?php echo $row['id_daftar']; ?>" class="btn btn-sm btn-outline-primary fw-bold px-3 me-1 rounded-pill">Detail</a>
 
                                     <?php if ($filter_status == 'Menunggu'): ?>
-                                        <button onclick="konfirmasiAksi('terima', '<?php echo $row['id_pendaftaran']; ?>', '<?php echo htmlspecialchars($row['nama_lengkap']); ?>')" 
+                                        <button onclick="konfirmasiAksi('terima', '<?php echo $row['id_daftar']; ?>', '<?php echo htmlspecialchars($row['nama']); ?>')" 
                                                 class="btn-icon-action bg-success bg-opacity-10 text-success border-0 ms-1" title="Terima">
                                             <i class="fa-solid fa-check"></i>
                                         </button>
                                         
-                                        <button onclick="konfirmasiAksi('tolak', '<?php echo $row['id_pendaftaran']; ?>', '<?php echo htmlspecialchars($row['nama_lengkap']); ?>')" 
+                                        <button onclick="konfirmasiAksi('tolak', '<?php echo $row['id_daftar']; ?>', '<?php echo htmlspecialchars($row['nama']); ?>')" 
                                                 class="btn-icon-action bg-danger bg-opacity-10 text-danger border-0 ms-1" title="Tolak">
                                             <i class="fa-solid fa-xmark"></i>
                                         </button>
                                     <?php endif; ?>
 
                                     <?php if ($filter_status == 'Diterima'): ?>
-                                        <button onclick="konfirmasiAksi('selesai', '<?php echo $row['id_pendaftaran']; ?>', '<?php echo htmlspecialchars($row['nama_lengkap']); ?>')" 
+                                        <button onclick="konfirmasiAksi('selesai', '<?php echo $row['id_daftar']; ?>', '<?php echo htmlspecialchars($row['nama']); ?>')" 
                                                 class="btn btn-sm btn-info text-white fw-bold ms-1 rounded-pill shadow-sm" title="Selesaikan Magang (Masuk Arsip)">
                                             <i class="fa-solid fa-flag-checkered me-1"></i> Selesaikan
                                         </button>
