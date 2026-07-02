@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Hubungkan ke database
-include '../config/database.php';
+include __DIR__ . '/config/database.php';
 
 /** @var mysqli $koneksi */
 
@@ -24,7 +24,7 @@ if ($cek_admin > 0) {
     
     // Data Spesifik Admin
     $_SESSION['admin_id']    = $data['id_admin'];
-    $_SESSION['admin_nama']  = $data['nama']; 
+    $_SESSION['admin_nama']  = $data['nama_lengkap']; 
     $_SESSION['admin_role']  = $data['role']; // Isinya 'Admin'
 
     // Redirect ke Dashboard Admin

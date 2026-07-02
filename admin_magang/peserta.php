@@ -23,7 +23,7 @@ if (isset($_GET['aksi']) && isset($_GET['id'])) {
 
     if ($aksi == 'terima') {
         // Cek Kuota Global vs Peserta Aktif
-        $q_maks = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT jumlah_maks FROM pengaturan_sistem LIMIT 1"));
+        $q_maks = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota LIMIT 1"));
         $q_aktf = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) as tot FROM pendaftaran WHERE status='Diterima'"));
         
         $sisa = $q_maks['jumlah_maks'] - $q_aktf['tot'];

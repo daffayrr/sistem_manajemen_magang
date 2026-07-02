@@ -21,7 +21,7 @@ describe('Testing Fungsionalitas Pengaturan Kuota Admin', () => {
       skenarioPerubahanKuota.forEach((kuotaBaru) => {
         
         // 1. Membersihkan kolom input dan mengetik angka baru
-        cy.get('input[name="kuota_maksimal"]').clear().type(kuotaBaru.toString());
+        cy.get('input[name="jumlah_maks"]').clear().type(kuotaBaru.toString());
         
         // 2. Mengeklik tombol "Simpan Pengaturan"
         cy.get('button[name="update_kuota"]').click();
@@ -32,7 +32,7 @@ describe('Testing Fungsionalitas Pengaturan Kuota Admin', () => {
           .and('contain', `Pengaturan Kuota Global berhasil diperbarui menjadi ${kuotaBaru} orang.`);
           
         // 4. Memvalidasi bahwa nilai di dalam kolom input benar-benar sudah berubah
-        cy.get('input[name="kuota_maksimal"]').should('have.value', kuotaBaru.toString());
+        cy.get('input[name="jumlah_maks"]').should('have.value', kuotaBaru.toString());
         
         // Karena form menggunakan action="" (reload di halaman yang sama),
         // kita pastikan URL tetap aman berada di kuota.php
@@ -45,7 +45,7 @@ describe('Testing Fungsionalitas Pengaturan Kuota Admin', () => {
       // =========================================================
       // VALIDASI FINAL: Memastikan sisa akhir benar-benar angka 4
       // =========================================================
-      cy.get('input[name="kuota_maksimal"]').should('have.value', '4');
+      cy.get('input[name="jumlah_maks"]').should('have.value', '4');
       cy.log('Pengujian selesai, kuota sistem saat ini berhasil dikunci pada angka 4.');
     });
   
