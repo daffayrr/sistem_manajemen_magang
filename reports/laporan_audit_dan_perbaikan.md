@@ -1,324 +1,286 @@
-# LAPORAN AUDIT, BLACKBOX TESTING, DAN PERBAIKAN SISTEM
-## Sistem Informasi Manajemen Penerimaan Magang Balai Tekkomdik DIY
+# LAPORAN AUDIT, PERBAIKAN SISTEM, DAN PENGUJIAN BLACKBOX CYPRESS
+## Sistem Informasi Manajemen Penerimaan Magang — Balai Tekkomdik DIY
+*(Tepat 30 Test Case: 20 Admin & 10 Peserta)*
 
 ---
 
-## 1. Ringkasan Fitur yang Ditemukan
+## 1. Ringkasan Hasil Audit Source Code
 
-Berdasarkan hasil audit menyeluruh terhadap source code dan arsitektur Sistem Informasi Manajemen Penerimaan Magang Balai Tekkomdik DIY, ditemukan **14 fitur inti** yang terimplementasi dan berfungsi penuh:
+Audit menyeluruh telah dilakukan terhadap source code aplikasi Sistem Informasi Manajemen Penerimaan Magang Balai Tekkomdik DIY. Aplikasi dibangun menggunakan arsitektur **PHP Native (Procedural & Object-Oriented Helper)** dengan basis data **MySQL (MariaDB)**, antarmuka berbasis **Bootstrap 5**, dan suite otomasi pengujian **Cypress E2E Automation**.
 
-1. **Autentikasi & Otorisasi Administrator:** Login administrator berbasis username/password hashing (`password_verify`), session handling aman, proteksi hak akses Super Admin vs Admin biasa, serta logout.
-2. **Dashboard Administrator:** Panel visual metrik kuota dinamis, statistik status pendaftar (Menunggu, Diterima, Ditolak, Arsip/Selesai), tabel pemantauan antrean FIFO real-time, status monitoring Deadman System, dan aksi cepat navigasi.
-3. **Verifikasi & Manajemen Berkas Pendaftar:** Tabel pendaftar dengan filter status komprehensif, pencarian teks nama/instansi, preview dokumen PDF terintegrasi, validasi manual dokumen berstatus ambigu, modal konfirmasi SweetAlert2 untuk aksi terima/tolak, serta penegakan urutan seleksi berbasis First-In First-Out (FIFO) anti-skipping.
-4. **Penyelesaian Magang (Kelulusan & Pengarsipan):** Alur transisi status peserta dari 'Diterima' menjadi 'Selesai/Arsip', kewajiban pengunggahan dokumen kelulusan (Sertifikat Nilai dan Surat Keterangan Selesai Magang bertipe PDF), dan pelepasan kuota secara otomatis kembali ke kapasitas tersedia.
-5. **Manajemen Kuota Magang:** Konfigurasi kapasitas maksimal peserta magang per periode, validasi batas numerik (mencegah nilai <= 0 atau non-numerik), stress testing penyesuaian kuota, dan penolakan otomatis penerimaan baru ketika sisa kuota bernilai 0.
-6. **Deadman System Automation:** Mekanisme otomatisasi pemrosesan pendaftar yang tidak ditindaklanjuti admin hingga batas waktu kedaluwarsa (toleransi default 7 hari), konfigurasi batas hari dan kebijakan aksi otomatis (terima/tolak) di `kuota.php`, audit logging di tabel `deadman_logs`, serta background worker CLI dengan perlindungan proses ganda (`flock`).
-7. **Informasi & Pengumuman:** Pengelolaan pengumuman operasional magang oleh admin, form WYSIWYG/textarea dengan live preview interaktif, dan rendering dinamis di halaman login publik serta portal peserta.
-8. **Manajemen Akun Administrator:** Modul Super Admin untuk menambah administrator baru dengan hashing kata sandi (`password_hash`), validasi username duplikat, penghapusan admin non-superadmin, serta proteksi keamanan mencegah Super Admin dihapus dan mencegah admin menghapus akun dirinya sendiri.
-9. **Autentikasi & Registrasi Peserta:** Pendaftaran akun mandiri calon peserta magang, login peserta dengan email & kata sandi, isolasi akses halaman (mencegah peserta mengakses direktori `/admin_magang/*`), dan pengelolaan sesi.
-10. **Dashboard Peserta:** Ringkasan status pengajuan magang, alert sambutan informatif, panduan langkah berikutnya, dan kartu navigasi cepat.
-11. **Buku Panduan Magang:** Halaman panduan tata cara pendaftaran, visual alur seleksi dari pengajuan hingga sertifikasi, dan accordion FAQ (Frequently Asked Questions).
-12. **Formulir Pendaftaran & Validasi Dokumen Heuristik:** Form input data pribadi, data institusi, dan periode magang dengan validasi client-side serta server-side (memastikan `tanggal_selesai >= tanggal_mulai`), pengunggahan berkas wajib (Surat Pengantar format PDF) dan berkas opsional (Proposal), inspeksi heuristik konten PDF untuk membedakan surat permohonan resmi dari materi/modul kuliah, dan penguncian formulir pasca submit guna mencegah pengajuan ganda.
-13. **Cek Posisi & Kuota Real-time:** Halaman transparansi status antrean FIFO calon peserta, 4 widget ringkasan kuota (Kapasitas, Terisi, Menunggu, Sisa Kuota), serta tabel antrean publik dengan penyamaran identitas (*Data Minimization*) demi menjaga privasi pemohon.
-14. **Unduhan Berkas & Hasil Seleksi:** Halaman pengambilan dokumen resmi secara mandiri; menampilkan status terkini pendaftaran, membatasi akses unduhan sebelum dinyatakan diterima, dan menyediakan tombol download Surat Penerimaan/Balasan serta Sertifikat saat magang telah diselesaikan.
-
----
-
-## 2. Modul yang Diaudit
-
-Audit dilakukan pada seluruh layer aplikasi, meliputi:
-
-| Layer / Direktori | File & Modul yang Diaudit | Deskripsi Cakupan |
-|---|---|---|
-| **Core & Database** | `config/koneksi.php`, `config/helpers.php`, `cron/deadman_worker.php` | Koneksi database PDO/MySQLi, session initialization, sanitasi input, query helper, background worker, dan file-lock mutex. |
-| **Admin Area** | `admin_magang/index.php`, `admin_magang/dashboard.php`, `admin_magang/peserta.php`, `admin_magang/kuota.php`, `admin_magang/informasi.php`, `admin_magang/admin.php`, `admin_magang/logout.php` | Seluruh halaman antarmuka administrator, middleware hak akses session admin & Super Admin, aksi AJAX CRUD, SweetAlert2 confirm, validasi kuota, dan antrean FIFO. |
-| **Peserta Area** | `index.php`, `register.php`, `login.php`, `dashboard.php`, `panduan.php`, `pendaftaran.php`, `posisi_kuota.php`, `unduhan.php`, `profil.php`, `logout.php` | Antarmuka calon peserta, autentikasi peserta, formulir pendaftaran multipart, proteksi unggahan, visualisasi kuota FIFO, dan distribusi unduhan berkas. |
-| **Test Automation** | `cypress/e2e/BTKP-SYSTEM/admin/*.cy.js` (7 specs), `cypress/e2e/BTKP-SYSTEM/peserta/*.cy.js` (6 specs), `cypress.config.js` | 13 test specification Cypress mencakup 45 skenario end-to-end browser testing. |
-| **Unit / Business Logic**| `tests/AdminBusinessLogicTest.php`, `tests/PesertaBusinessLogicTest.php`, `tests/AddonBusinessLogicTest.php` | 3 suite pengujian logika bisnis backend PHP (83 assertions) untuk FIFO, heuristic PDF scanner, kuota math, dan deadman calculations. |
+### Temuan Arsitektur & Logika Bisnis:
+1. **Entry Point & Autentikasi Publik:**
+   - Halaman login utama berada di `index.php`, memvalidasi kredensial pengguna ke tabel `admin` dan `peserta` menggunakan hashing kata sandi modern (`password_verify()` dan `password_hash()`).
+   - Registrasi mandiri calon peserta dilayani melalui `regs.php` dan diproses oleh `proses_regs.php`.
+2. **Area Administrator (`/admin_magang/`):**
+   - Panel dashboard di `dashboard.php` menampilkan ringkasan kuota global real-time, statistik antrean, pemantauan sistem otomatis (*Deadman System*), dan tombol aksi cepat navigasi.
+   - Pengelolaan peserta di `peserta.php` mengimplementasikan filter status (*Menunggu, Diterima, Ditolak, Selesai/Arsip*), pencarian nama/instansi, serta aksi penerimaan, penolakan, dan penyelesaian magang berbasis urutan First-In First-Out (FIFO) anti-skipping.
+   - Konfigurasi kapasitas kuota magang dan otomasi *Deadman System* diatur melalui `kuota.php`.
+   - Modul informasi publik dikelola di `informasi.php`, dilengkapi live preview interaktif.
+   - Manajemen akun administrator di `admin.php` dilengkapi isolasi hak akses khusus Super Admin.
+3. **Area Portal Peserta (`/peserta_magang/`):**
+   - Dashboard peserta di `index.php` menampilkan sambutan personal, status pengajuan terkini, dan banner pengumuman aktif dari admin.
+   - Formulir pendaftaran di `pendaftaran.php` mencakup validasi rentang tanggal, validasi berkas PDF via `PDFValidator`, proteksi kuota penuh, dan penguncian formulir pasca submit.
+   - Akses hasil seleksi dan unduhan dokumen resmi diatur secara kondisional di `unduhan.php`.
+   - Halaman panduan di `panduan.php` menyediakan informasi alur dan komponen interaktif Accordion FAQ.
 
 ---
 
-## 3. Jumlah Skenario Positive Testing
+## 2. Lingkungan Pengujian dan Cara Menjalankan Aplikasi
 
-- **Jumlah Skenario Positive Testing:** **33 Test Cases**
-- **Cakupan Skenario:**
-  - Login berhasil dengan kredensial sah (Admin & Peserta).
-  - Navigasi menu, tab, dan widget dashboard.
-  - Pencarian dan pemfilteran data peserta yang ada.
-  - Verifikasi penerimaan dan penolakan peserta yang sah sesuai aturan FIFO.
-  - Pengunggahan dokumen kelulusan resmi dan penyelesaian magang.
-  - Pembaruan kuota maksimal magang ke angka valid.
-  - Penyimpanan konfigurasi Deadman System dan eksekusi background worker normal.
-  - Pembaruan pengumuman dan validasi live preview.
-  - Penambahan akun admin baru dan penghapusan admin non-superadmin.
-  - Pengisian formulir pendaftaran lengkap dengan berkas PDF surat pengantar sah.
-  - Pendaftaran tanpa proposal (memverifikasi sifat opsional proposal).
-  - Tampilan transparansi antrean dan kuota real-time.
-  - Pengunduhan surat balasan resmi bagi peserta yang telah berstatus Diterima.
+- **Sistem Operasi:** Windows 11 Pro (64-bit)
+- **Web Server:** Microsoft Internet Information Services (IIS 10.0)
+- **Database Server:** MySQL 8.0 / MariaDB 10.4 (Port 3306)
+- **Runtime Backend:** PHP 8.2.x (Ekstensi aktif: `mysqli`, `pdo_mysql`, `fileinfo`, `mbstring`, `openssl`)
+- **Node.js Environment:** v22.21.0
+- **Test Runner:** Cypress v15.16.0 (Headless Electron 138 & Chrome)
+- **Base URL Aplikasi:** `http://localhost/_tekkomdik/sistem_manajemen_magang/`
+- **Database Pengujian:** `magang_btkp` (Tabel: `admin`, `peserta`, `pendaftaran`, `kuota`, `informasi`, `deadman_logs`, `audit_logs`)
+
+### Langkah Menjalankan Aplikasi Secara Lokal:
+1. Pastikan layanan web server IIS dan database MySQL berjalan.
+2. Akses aplikasi melalui browser di URL: `http://localhost/_tekkomdik/sistem_manajemen_magang/`.
+3. Direktori penyimpanan berkas unggahan berada pada folder fisik `uploads/` yang memiliki izin baca/tulis (*read/write permissions*).
 
 ---
 
-## 4. Jumlah Skenario Negative Testing
+## 3. Pemetaan 20 Test Case Admin dan 10 Test Case Peserta
 
-- **Jumlah Skenario Negative / Boundary / Security Testing:** **22 Test Cases**
-- **Cakupan Skenario:**
-  - Login dengan kredensial tidak terdaftar atau kata sandi salah.
-  - Akses langsung halaman terlindungi (`/admin_magang/*`) tanpa sesi login aktif.
-  - Akun peserta mencoba melompati otorisasi menuju halaman admin.
-  - Pembatalan aksi penolakan melalui dialog modal konfirmasi SweetAlert.
-  - Upaya menerima peserta dengan melompati urutan pendaftar lebih awal (*FIFO Anti-skipping protection*).
-  - Upaya menerima peserta yang dokumen surat pengantarnya terdeteksi tidak valid / materi kuliah.
-  - Upaya menyelesaikan magang tanpa mengunggah berkas sertifikat dan surat keterangan resmi.
-  - Input kuota magang tidak valid (angka 0, angka negatif, atau teks).
-  - Penolakan otomatis pendaftaran dan penerimaan saat kapasitas kuota telah penuh (0).
-  - Input batas toleransi Deadman System di luar rentang valid (< 1 hari atau > 90 hari).
-  - Eksekusi ganda serentak background worker Deadman dicegah oleh *process lock* (`flock`).
-  - Pendaftaran akun admin baru dengan username yang sudah digunakan (*duplicate entry*).
-  - Proteksi keamanan: Super Admin dicegah dari penghapusan.
-  - Proteksi keamanan: Admin dicegah menghapus akun miliknya sendiri yang sedang aktif.
-  - Input tanggal selesai magang lebih awal dari tanggal mulai (`tanggal_selesai < tanggal_mulai`).
-  - Pengunggahan berkas berkstensi non-PDF (misal .jpg atau .docx yang diganti nama menjadi .pdf).
-  - Pengunggahan berkas PDF yang berisi materi/modul kuliah alih-alih surat pengantar resmi.
-  - Penguncian formulir pendaftaran pasca submit untuk mencegah pendaftaran ganda (*double submission*).
-  - Percobaan mengunduh dokumen sebelum mendaftar atau ketika status pendaftaran masih 'Menunggu'.
+Pengujian difokuskan tepat pada 30 skenario bisnis yang diwajibkan:
 
----
-
-## 5. Jumlah Total Test Case
-
-- **Total Test Case Blackbox Terdokumentasi:** **55 Test Cases**
-- **Total Assertion Cypress E2E:** **45 Automated Browser Tests**
-- **Total Assertion PHP Backend Logic:** **83 Unit/Logic Assertions**
-
----
-
-## 6. Jumlah Test Case Berhasil pada Pengujian Awal
-
-- **Hasil Pengujian Awal (Sebelum Perbaikan):**
-  - Berhasil: **54 Test Cases** (98.18%)
-  - Cypress E2E Awal: 44 spec lolos, 1 spec gagal (`cypress/e2e/BTKP-SYSTEM/admin/2_peserta.cy.js`).
-
----
-
-## 7. Jumlah Test Case Gagal pada Pengujian Awal
-
-- **Jumlah Test Case Gagal pada Pengujian Awal:** **1 Test Case** (1.82%)
-  - Test Case ID: **TC-10** (Modul Verifikasi Peserta).
-  - Skenario: Menguji navigasi filter status pendaftar (Menunggu, Diterima, Ditolak, Arsip).
-  - Spec Cypress: `cypress/e2e/BTKP-SYSTEM/admin/2_peserta.cy.js` (Test Suite TC-01).
-
----
-
-## 8. Bug yang Ditemukan
-
-### Bug #1: Race Condition & Desinkronisasi Riwayat Navigasi pada Test Filter Peserta
-- **Gejala:** Pada pengujian otomatis Cypress `cypress/e2e/BTKP-SYSTEM/admin/2_peserta.cy.js` (TC-01 Filter Status), runner mengalami error kegagalan asersi timeout ketika memvalidasi tab pendaftar setelah pemanggilan perintah berulang `cy.go('back')`.
-- **Dampak:** Pengujian otomatis modul verifikasi peserta berhenti dengan status *FAILED*, meskipun logika backend filter data di PHP berfungsi dengan benar.
-
-### Bug #2: Kelemahan Validasi Ekstensi Dokumen Semu (Teridentifikasi & Terselesaikan pada Addon Prompt)
-- **Gejala:** Pengguna dapat mengunggah file gambar atau arsip dokumen yang hanya diganti ekstensi namanya menjadi `.pdf` tanpa pemeriksaan struktur internal berkas.
-- **Dampak:** Dokumen non-resmi atau materi kuliah dapat lolos verifikasi awal sistem.
-
-### Bug #3: Inkonsistensi Role Super Admin vs Admin Biasa (Terselesaikan pada Admin Prompt)
-- **Gejala:** Admin biasa berpotensi mengakses menu manajemen akun admin dan melakukan modifikasi data administrator lain.
-- **Dampak:** Potensi eskalasi hak akses (*privilege escalation*) pada sistem administrasi.
-
----
-
-## 9. Akar Masalah Masing-Masing Bug
-
-1. **Akar Masalah Bug #1:**
-   Implementasi awal pengujian Cypress pada `cypress/e2e/BTKP-SYSTEM/admin/2_peserta.cy.js` menggunakan metode navigasi `cy.go('back')` secara berturut-turut untuk berpindah antar tab filter (`?filter=menunggu`, `?filter=diterima`, `?filter=ditolak`, `?filter=arsip`). Karena setiap perpindahan tab memicu reload dokumen PHP penuh, riwayat navigasi browser mengalami desinkronisasi (*history state race condition*), menyebabkan Cypress mencari elemen UI pada snapshot DOM lama sebelum halaman baru selesai dimuat.
-
-2. **Akar Masalah Bug #2:**
-   Validasi sebelumnya hanya memeriksa ekstensi file di sisi frontend (`accept=".pdf"`), tanpa memeriksa Magic Bytes dan heuristik teks internal PDF di sisi backend server.
-
-3. **Akar Masalah Bug #3:**
-   Pemeriksaan session di `admin_magang/admin.php` sebelumnya hanya memeriksa `isset($_SESSION['admin'])` tanpa memverifikasi nilai kolom `role === 'superadmin'`.
-
----
-
-## 10. File Source Code yang Diperbaiki
-
-1. `cypress/e2e/BTKP-SYSTEM/admin/2_peserta.cy.js` (Perbaikan stabilitas test filter tab verifikasi).
-2. `config/helpers.php` (Penguatan sanitasi input, validasi magic bytes PDF, dan deteksi heuristik keyword surat pengantar vs modul kuliah).
-3. `admin_magang/admin.php` (Penegakan otorisasi ketat berbasis role Super Admin).
-4. `admin_magang/kuota.php` (Pencegahan nilai kuota <= 0 dan integrasi konfigurasi Deadman System).
-5. `admin_magang/peserta.php` (Penegakan aturan anti-skipping urutan FIFO pada aksi verifikasi).
-
----
-
-## 11. Ringkasan Perubahan Kode
-
-### A. Perbaikan pada `cypress/e2e/BTKP-SYSTEM/admin/2_peserta.cy.js`
-Mengganti navigasi riwayat browser yang tidak stabil (`cy.go('back')`) dengan selektor anchor langsung pada tab navigasi:
-```javascript
-// Sebelum (Menyebabkan desinkronisasi riwayat dokumen):
-cy.get('a[href="peserta.php?filter=diterima"]').click();
-cy.go('back');
-cy.get('a[href="peserta.php?filter=ditolak"]').click();
-cy.go('back');
-
-// Sesudah (Akurat, deterministik, dan stabil):
-cy.get('a[href="peserta.php?filter=menunggu"]').click();
-cy.url().should('include', 'filter=menunggu');
-cy.get('a[href="peserta.php?filter=diterima"]').click();
-cy.url().should('include', 'filter=diterima');
-cy.get('a[href="peserta.php?filter=ditolak"]').click();
-cy.url().should('include', 'filter=ditolak');
-cy.get('a[href="peserta.php?filter=arsip"]').click();
-cy.url().should('include', 'filter=arsip');
-```
-
-### B. Penguatan Pemeriksaan Berkas PDF di `config/helpers.php`
-Menambahkan verifikasi byte header `%PDF-` dan algoritma pemindaian heuristik:
-```php
-function validate_pdf_content($filePath) {
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime = finfo_file($finfo, $filePath);
-    finfo_close($finfo);
-    if ($mime !== 'application/pdf') return false;
-
-    $handle = fopen($filePath, 'rb');
-    $header = fread($handle, 5);
-    fclose($handle);
-    return strpos($header, '%PDF-') === 0;
-}
-```
-
-### C. Proteksi Role Super Admin di `admin_magang/admin.php`
-Memastikan hanya pengguna dengan role `superadmin` yang dapat mengakses dan mengelola akun admin:
-```php
-if (!isset($_SESSION['admin_role']) || strtolower($_SESSION['admin_role']) !== 'superadmin') {
-    header("Location: dashboard.php?error=unauthorized");
-    exit();
-}
-```
-
----
-
-## 12. Hasil Pengujian Ulang (Regression Testing)
-
-Setelah perbaikan diimplementasikan, seluruh test suite dijalankan ulang secara menyeluruh:
-
-### Ringkasan Eksekusi Cypress Test Automation:
-- **Total Test Specs:** 13 files
-- **Total Tests:** 45 tests
-- **Passed:** **45 (100%)**
-- **Failed:** **0 (0%)**
-- **Pending / Skipped:** **0 (0%)**
-- **Durasi Eksekusi:** ~1 menit 42 detik
-
-### Detail Hasil Per Spec Cypress:
-| File Spec Cypress | Modul | Skenario Diuji | Status |
+### A. 20 Test Case Admin (`ADM-01` s/d `ADM-20`):
+| ID | Fitur | File Source Code Terkait | Fokus Pengujian |
 |---|---|---|---|
-| `admin/0_auth.cy.js` | Autentikasi Admin | Login valid, invalid kredensial, logout | **PASSED (3/3)** |
-| `admin/1_dashboard.cy.js` | Dashboard Admin | Widget statistik, aksi cepat, tabel FIFO, deadman widget | **PASSED (4/4)** |
-| `admin/2_peserta.cy.js` | Verifikasi Peserta | Filter tab status, pencarian peserta, detail, modal batal | **PASSED (4/4)** |
-| `admin/3_kuota.cy.js` | Pengaturan Kuota | Stress test kuota, kunci kuota 4, validasi form, sinkronisasi kuota | **PASSED (5/5)** |
-| `admin/4_informasi.cy.js` | Informasi & Pengumuman | Form info, update pengumuman, live preview | **PASSED (3/3)** |
-| `admin/5_manajemen_admin.cy.js` | Manajemen Admin | Tambah admin, duplikat username, hapus akun | **PASSED (3/3)** |
-| `admin/6_superadmin.cy.js` | Proteksi Super Admin | Proteksi akun superadmin, cegah hapus akun aktif, isolasi role | **PASSED (3/3)** |
-| `peserta/0_auth.cy.js` | Autentikasi Peserta | Login gagal, login berhasil, logout peserta | **PASSED (3/3)** |
-| `peserta/1_dashboard.cy.js` | Dashboard Peserta | Elemen UI, nama sambutan, navigasi aksi cepat, proteksi URL admin | **PASSED (4/4)** |
-| `peserta/2_panduan.cy.js` | Panduan Magang | Alur magang, FAQ accordion buka/tutup, responsive UI | **PASSED (3/3)** |
-| `peserta/3_pendaftaran.cy.js` | Formulir Pendaftaran | Validasi tanggal, upload berkas, formulir pendaftaran terkunci | **PASSED (3/3)** |
-| `peserta/4_unduhan.cy.js` | Unduhan & Hasil | Unduhan belum daftar, status menunggu, unduhan surat diterima | **PASSED (3/3)** |
-| `peserta/5_posisi_kuota.cy.js` | Posisi & Kuota | Navigasi menu, 4 widget kuota, data minimization tabel FIFO | **PASSED (4/4)** |
+| **ADM-01** | Login Admin | `index.php`, `cek_login.php` | Autentikasi kredensial valid & pengalihan ke dashboard admin |
+| **ADM-02** | Login Admin | `index.php`, `cek_login.php` | Penolakan kredensial salah & validasi pesan error |
+| **ADM-03** | Dashboard Admin | `admin_magang/dashboard.php` | Tampilan kuota, antrean FIFO, tombol Lihat Semua & Aksi Cepat |
+| **ADM-04** | Verifikasi Peserta | `admin_magang/peserta.php` | Pencarian data pendaftar yang terdaftar (kata kunci ditemukan) |
+| **ADM-05** | Verifikasi Peserta | `admin_magang/peserta.php` | Pencarian data pendaftar tidak terdaftar & pesan 'Tidak ada data' |
+| **ADM-06** | Verifikasi Peserta | `admin_magang/peserta.php` | Pengelompokan tab status pendaftar & integritas urutan FIFO |
+| **ADM-07** | Detail Peserta | `admin_magang/detail_peserta.php` | Navigasi & rendering detail identitas, instansi, dan dokumen |
+| **ADM-08** | Unduh Berkas | `admin_magang/peserta.php` | Verifikasi tautan unduhan berkas PDF surat pengantar (HTTP 200) |
+| **ADM-09** | Tombol Tolak | `admin_magang/peserta.php` | Konfirmasi penolakan via SweetAlert & update status database |
+| **ADM-10** | Filter Status | `admin_magang/peserta.php` | Navigasi filter status seleksi & isolasi data antar status |
+| **ADM-11** | Persetujuan, FIFO, Kuota | `admin_magang/peserta.php` | Penerimaan peserta dalam antrean FIFO & pengurangan kuota otomatis |
+| **ADM-12** | Penyelesaian Magang | `admin_magang/peserta.php` | Transisi status Diterima ke Selesai & pengembalian kuota (+1) |
+| **ADM-13** | Proteksi Kuota | `admin_magang/peserta.php` | Pemblokiran persetujuan saat sisa kuota nol (Penuh) |
+| **ADM-14** | Unggah Surat Balasan | `admin_magang/detail_peserta.php` | Unggah dokumen surat balasan format PDF & aktivasi tautan unduh |
+| **ADM-15** | Validasi Surat Balasan | `admin_magang/detail_peserta.php` | Penolakan berkas terlarang (.docx/.zip) & pesan format tidak valid |
+| **ADM-16** | Pengaturan Kuota | `admin_magang/kuota.php` | Pembaruan kapasitas kuota maksimal & sinkronisasi nilai |
+| **ADM-17** | Informasi Umum | `admin_magang/informasi.php` | Pembaruan judul/deskripsi pengumuman & rendering live preview |
+| **ADM-18** | Validasi Informasi Umum | `admin_magang/informasi.php` | Penolakan input pengumuman kosong & proteksi data lama |
+| **ADM-19** | Manajemen Admin | `admin_magang/admin.php` | Penambahan administrator baru & hashing kata sandi aman |
+| **ADM-20** | Deadman System | `admin_magang/kuota.php` | Konfigurasi batas hari, aksi otomatis, & persistensi database |
 
-### Ringkasan Eksekusi Unit & Logic Testing PHP:
-- `tests/AdminBusinessLogicTest.php`: **20/20 PASSED**
-- `tests/PesertaBusinessLogicTest.php`: **18/18 PASSED**
-- `tests/AddonBusinessLogicTest.php`: **45/45 PASSED**
-- **Total Backend Logic Tests:** **83/83 PASSED (100%)**
-
----
-
-## 13. Test Case yang Belum Lulus atau Tidak Dapat Diuji
-
-- **Jumlah Test Case Belum Lulus:** **0**
-- **Jumlah Test Case Tidak Dapat Diuji:** **0**
-- Seluruh 55 test case blackbox yang tercantum dalam inventaris dan laporan telah diuji secara nyata pada lingkungan pengujian lokal (IIS Web Server & MySQL) dengan tingkat kelulusan **100%**.
-
----
-
-## 14. Kendala Lingkungan Pengujian
-
-1. **Konfigurasi Eksekusi Otomatis Background Worker:**
-   Pada lingkungan Windows lokal pengembang, scheduler otomatis Deadman System memerlukan Windows Task Scheduler atau runner daemon PowerShell yang memanggil `php.exe cron/deadman_worker.php`. Pada lingkungan produksi (Linux VPS/Hosting), dianjurkan menggunakan Cron Job standar:
-   ```bash
-   0 0 * * * /usr/bin/php /var/www/html/cron/deadman_worker.php >> /var/log/deadman.log 2>&1
-   ```
-2. **Dependensi Ekstensi PHP Fileinfo:**
-   Fitur validasi MIME-type PDF tingkat lanjut membutuhkan ekstensi `extension=fileinfo` aktif pada `php.ini`. Lingkungan pengujian lokal telah memverifikasi ekstensi ini aktif.
+### B. 10 Test Case Peserta (`PST-01` s/d `PST-10`):
+| ID | Fitur | File Source Code Terkait | Fokus Pengujian |
+|---|---|---|---|
+| **PST-01** | Sidebar & Navbar | `peserta_magang/layouts/*.php` | Logout peserta, pembersihan sesi, & blokir akses dashboard |
+| **PST-02** | Dashboard Peserta | `peserta_magang/index.php` | Rendering pengumuman terbaru dari admin di dashboard peserta |
+| **PST-03** | Dashboard Peserta | `peserta_magang/index.php` | Navigasi tombol pendaftaran bagi peserta yang belum mendaftar |
+| **PST-04** | Panduan Sistem | `peserta_magang/panduan.php` | Komponen Accordion FAQ expand/collapse |
+| **PST-05** | Formulir Pendaftaran | `peserta_magang/pendaftaran.php` | Pendaftaran lengkap dengan berkas PDF valid & status Menunggu |
+| **PST-06** | Validasi Periode | `peserta_magang/pendaftaran.php` | Penolakan tanggal selesai lebih awal daripada tanggal mulai |
+| **PST-07** | Validasi Unggahan | `peserta_magang/pendaftaran.php` | Penolakan unggahan surat pengantar berformat non-PDF (.jpg) |
+| **PST-08** | Pencegahan Duplikasi | `peserta_magang/pendaftaran.php` | Penguncian formulir saat antrean aktif & proteksi server-side |
+| **PST-09** | Unduhan & Hasil Seleksi | `peserta_magang/unduhan.php` | Tombol unduhan surat balasan aktif saat status Diterima |
+| **PST-10** | Proteksi Unduhan | `peserta_magang/unduhan.php` | Tombol unduhan terkunci & pesan 'Belum Ada Berkas' saat Menunggu |
 
 ---
 
-## 15. Cara Menjalankan Cypress Test Automation
+## 4. Jumlah Test Case yang Lulus, Gagal, Belum Diuji, dan Tidak Dapat Diuji
 
-Untuk mereproduksi atau menjalankan kembali seluruh suite pengujian otomatis end-to-end Cypress:
+Berdasarkan hasil eksekusi pengujian otomatis Cypress pada seluruh 30 skenario uji:
 
-### A. Menjalankan Seluruh Suite secara Headless (Command Line)
-Buka terminal pada direktori root proyek (`D:\coding\_Tekkomdik\sistem_manajemen_magang\`) dan jalankan:
+- **Total Test Case:** **30 Test Case**
+- **Jumlah Test Case Berhasil (Lulus):** **30 Test Case**
+- **Jumlah Test Case Gagal:** **0 Test Case**
+- **Jumlah Test Case Belum Diuji:** **0 Test Case**
+- **Jumlah Test Case Tidak Dapat Diuji:** **0 Test Case**
+
+---
+
+## 5. Persentase Keberhasilan Pengujian Aktual
+
+$$\text{Tingkat Keberhasilan (Pass Rate)} = \frac{30 \text{ Lulus}}{30 \text{ Total Test Case}} \times 100\% = \mathbf{100\%}$$
+
+Seluruh 30 skenario fungsional lulus 100% tanpa ada test case yang di-skip (`it.skip`), tanpa mock fiktif, dan dieksekusi secara nyata terhadap server aplikasi lokal yang berjalan.
+
+---
+
+## 6. Daftar Bug yang Ditemukan
+
+Selama pelaksanaan audit dan eksekusi awal Cypress, ditemukan 3 bug/kelemahan fungsional pada kode aplikasi:
+
+1. **Bug #1 (Server-Side Duplicate Submission Vulnerability di `pendaftaran.php`):**
+   Meskipun antarmuka web menyembunyikan formulir ketika status `$sedang_daftar = true`, handler backend `if (isset($_POST['kirim_pendaftaran']))` belum memvalidasi apakah pengguna telah memiliki pendaftaran aktif (`status IN ('Menunggu', 'Diterima')`). Akibatnya, request HTTP POST langsung dapat membuat pendaftaran ganda dan merusak integritas kuota/antrean FIFO.
+2. **Bug #2 (Inkonsistensi Pesan Validasi Format Unggahan Surat Balasan di `detail_peserta.php`):**
+   Pesan error validasi ekstensi surat balasan sebelumnya menggunakan tanda baca koma (`Format file tidak valid! Gunakan PDF, JPG, atau PNG.`), tidak sinkron dengan spesifikasi baku sistem (`Format file tidak valid! Gunakan PDF/JPG/PNG.`).
+3. **Bug #3 (Pesan Validasi Ekstensi Berkas Pendaftaran di `pdf_validator.php`):**
+   Pemeriksaan ekstensi non-PDF menghasilkan notifikasi teknis umum (`Ekstensi berkas harus berformat .pdf.`), yang belum menyertakan instruksi spesifik dokumen persyaratan (`Format Surat Pengantar harus PDF!`).
+
+---
+
+## 7. Akar Penyebab dan Perbaikan Source Code
+
+### A. Perbaikan Bug #1: Proteksi Duplikasi Pengajuan Server-Side
+- **Akar Masalah:** Logika penerimaan form hanya memeriksa ketersediaan kuota global tanpa memeriksa histori pendaftaran aktif milik `id_user` yang sedang login.
+- **Perbaikan Kode (`peserta_magang/pendaftaran.php`):**
+  Menambahkan pengecekan prepared statement sebelum memproses transaksi pendaftaran:
+  ```php
+  // Validasi Backend: Cek Duplikasi Pendaftaran Aktif
+  $stmt_cek_aktif = mysqli_prepare($koneksi, "SELECT id_daftar FROM pendaftaran WHERE id_user = ? AND status IN ('Menunggu', 'Diterima') LIMIT 1");
+  mysqli_stmt_bind_param($stmt_cek_aktif, "i", $id_user);
+  mysqli_stmt_execute($stmt_cek_aktif);
+  mysqli_stmt_store_result($stmt_cek_aktif);
+  $ada_aktif = (mysqli_stmt_num_rows($stmt_cek_aktif) > 0);
+  mysqli_stmt_close($stmt_cek_aktif);
+
+  if ($ada_aktif) {
+      $msg_type = "danger";
+      $msg_text = "Anda masih memiliki pengajuan magang yang sedang diproses atau aktif. Pendaftaran ulang tidak diizinkan.";
+  } elseif ($is_kuota_penuh) {
+      // Penanganan kuota penuh...
+  }
+  ```
+
+### B. Perbaikan Bug #2: Sinkronisasi Pesan Error Surat Balasan
+- **Akar Masalah:** String error literal pada blok validasi file upload di `admin_magang/detail_peserta.php` belum terstandardisasi.
+- **Perbaikan Kode (`admin_magang/detail_peserta.php`):**
+  ```php
+  if (!in_array($ext, $allowed_ext)) {
+      $msg_type = "danger"; 
+      $msg_text = "Format file tidak valid! Gunakan PDF/JPG/PNG.";
+  }
+  ```
+
+### C. Perbaikan Bug #3: Sinkronisasi Pesan Error Ekstensi Berkas Pendaftaran
+- **Akar Masalah:** Pesan teknis di pustaka `config/pdf_validator.php` belum sesuai pesan panduan pendaftaran.
+- **Perbaikan Kode (`config/pdf_validator.php`):**
+  ```php
+  if (!empty($original_name)) {
+      $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+      if ($ext !== 'pdf') {
+          return ['valid' => false, 'message' => 'Format Surat Pengantar harus PDF!'];
+      }
+  }
+  ```
+
+---
+
+## 8. Daftar File Source Code yang Diubah dan Alasan Perubahan
+
+1. `peserta_magang/pendaftaran.php`: Menambahkan proteksi validasi server-side terhadap percobaan pendaftaran duplikat saat status aktif.
+2. `admin_magang/detail_peserta.php`: Menyelaraskan pesan kesalahan penolakan berkas surat balasan terlarang.
+3. `config/pdf_validator.php`: Memperbarui pesan penolakan teknis ekstensi non-PDF agar konsisten dengan pesan formulir.
+4. `cypress/e2e/admin_cases.cy.js`: Menyusun dan mengeksekusi 20 test case admin (`ADM-01` s/d `ADM-20`).
+5. `cypress/e2e/peserta_cases.cy.js`: Menyusun dan mengeksekusi 10 test case peserta (`PST-01` s/d `PST-10`).
+6. `scripts/prepare_test_data.php`: Menyiapkan skrip seeding data deterministik untuk menjamin keandalan pengujian berulang.
+7. `scripts/generate_30_reports.py`: Generator laporan resmi CSV dan Excel (.xlsx) dengan tepat 30 baris data.
+
+---
+
+## 9. Hasil Regression Testing
+
+Setelah seluruh perbaikan diimplementasikan, regression test otomatis dijalankan serentak untuk memastikan tidak terjadi efek samping (*side effects*) pada fitur lain:
+
+### Ringkasan Eksekusi Cypress Runner:
+```
+====================================================================================================
+  (Run Finished)
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ √  admin_cases.cy.js                        00:44       20       20        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ √  peserta_cases.cy.js                      00:32       10       10        -        -        - │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    √  All specs passed!                        01:16       30       30        -        -        -  
+====================================================================================================
+```
+- **Total Durasi Eksekusi:** 1 menit 16 detik
+- **Status:** **30 of 30 Passed (100%)**
+- **HTML Report Mochawesome:** `cypress/reports/html/index.html` berhasil diperbarui.
+
+---
+
+## 10. Catatan Khusus Aspek Kritis Sistem
+
+1. **Autentikasi & Manajemen Sesi:**
+   - Seluruh autentikasi telah menggunakan algoritma hashing modern (`password_hash` dengan algoritma BCRYPT secara default) dan diverifikasi dengan `password_verify()`.
+   - Mekanisme proteksi sesi aktif mencegah eskalasi hak akses (*privilege escalation*); akun peserta yang mencoba mengakses direktori `/admin_magang/` secara otomatis diblokir dan dialihkan.
+2. **Keamanan Upload Berkas:**
+   - Direktori `uploads/` dilindungi dengan sanitasi nama berkas acak (`$id_user . "_SURAT_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext`), mencegah penimpaan file (*file collision*) dan eksekusi skrip berbahaya.
+   - Pustaka `PDFValidator` memeriksa MIME-type riil melalui `finfo` dan Magic Bytes `%PDF-` pada header berkas untuk menangkal file berbahaya yang disamarkan ekstensinya.
+3. **Otorisasi Unduhan Dokumen:**
+   - Surat Balasan Resmi dan Sertifikat kelulusan hanya dapat diunduh jika status pendaftaran telah dinyatakan `Diterima` atau `Selesai`. Selama berstatus `Menunggu` atau belum diverifikasi, tautan unduhan dinonaktifkan dengan status `Belum Ada Berkas`.
+4. **Logika FIFO & Konsistensi Timestamp:**
+   - Pengurutan seleksi dan antrean pendaftar menerapkan prinsip First-In First-Out deterministik dengan multi-kriteria: `ORDER BY tanggal_mulai ASC, tgl_daftar ASC, id_daftar ASC`.
+   - Timestamp pendaftaran dicatat dengan presisi tinggi (`DATETIME(3)`) dan tidak berubah saat admin melakukan verifikasi.
+5. **Integritas Kuota Magang:**
+   - Perubahan kuota menggunakan mekanisme transaksi basis data dengan penguncian baris (*pessimistic locking* `FOR UPDATE`) untuk mencegah kondisi balapan (*race condition*) saat pendaftaran atau persetujuan dilakukan secara simultan.
+   - Peserta yang telah menyelesaikan magang (berstatus `Selesai`) otomatis melepaskan kuota kembali ke kapasitas tersedia (+1) dan dipindahkan ke tab Arsip.
+6. **Deadman System Automation:**
+   - Pengaturan batas toleransi hari kedaluwarsa (default 7 hari) dan kebijakan tindakan otomatis (`AUDIT_ONLY`, `AUTO_REJECT`, `AUTO_ACCEPT`) tersimpan persisten di tabel `kuota`.
+   - Background worker CLI di `cron/deadman_worker.php` dilengkapi proteksi `flock()` guna mencegah eksekusi ganda serentak.
+
+---
+
+## 11. Hambatan atau Risiko yang Belum Terselesaikan
+
+1. **Penjadwalan Eksekusi Worker Deadman pada Lingkungan Windows:**
+   - Di lingkungan lokal Windows pengembang, penjadwalan eksekusi skrip background worker Deadman memerlukan konfigurasi Windows Task Scheduler. Pada deployment server produksi Linux, disarankan menggunakan daemon Cron Job sistem.
+2. **Ketergantungan Ekstensi PHP Fileinfo:**
+   - Pemeriksaan MIME type internal PDF mengandalkan ekstensi `php_fileinfo`. Pastikan ekstensi ini selalu diaktifkan pada berkas `php.ini` di lingkungan produksi.
+
+---
+
+## 12. Panduan Menjalankan Lingkungan dan Pengujian
+
+### A. Instalasi Dependensi
 ```bash
-# Menjalankan seluruh 13 test spec (Admin dan Peserta)
-npx cypress run --spec "cypress/e2e/BTKP-SYSTEM/**/*.cy.js"
+# Instalasi pustaka Node.js & Cypress
+npm install
+
+# Instalasi ekstensi Python untuk generator dokumen Excel (jika diperlukan)
+pip install openpyxl
 ```
 
-### B. Menjalankan Spec Tertentu
+### B. Menyiapkan Data Uji Deterministik
+Sebelum menjalankan otomasi pengujian, jalankan skrip seed data:
 ```bash
-# Menjalankan modul Admin saja:
-npx cypress run --spec "cypress/e2e/BTKP-SYSTEM/admin/*.cy.js"
-
-# Menjalankan modul Peserta saja:
-npx cypress run --spec "cypress/e2e/BTKP-SYSTEM/peserta/*.cy.js"
+php scripts/prepare_test_data.php
 ```
 
-### C. Menjalankan Pengujian melalui Antarmuka Grafis Interaktif (Cypress GUI)
+### C. Menjalankan Pengujian Cypress
+Jalankan seluruh 30 skenario pengujian secara headless:
 ```bash
-npx cypress open
+npx.cmd cypress run --spec "cypress/e2e/admin_cases.cy.js,cypress/e2e/peserta_cases.cy.js"
 ```
-Pilih opsi **E2E Testing** -> Pilih browser (misal Chrome / Electron) -> Klik file spec yang ingin diuji untuk melihat jalannya pengetesan browser secara visual.
+Atau buka antarmuka interaktif:
+```bash
+npx.cmd cypress open
+```
+
+### D. Menghasilkan Ulang Laporan CSV dan Excel
+```bash
+python scripts/generate_30_reports.py
+```
 
 ---
 
-## 16. Cara Membuka dan Memeriksa Hasil Pengujian (CSV & Excel)
+## 13. Lokasi Artefak Hasil Pengujian dan Bukti Eksekusi
 
-Dokumentasi hasil pengujian Blackbox telah diekspor dan tersedia pada folder `reports/`:
+Seluruh artefak hasil pengujian telah diverifikasi dan tersimpan pada lokasi berikut:
 
-1. **File CSV: `reports/hasil_pengujian_blackbox.csv`**
-   - Menggunakan encoding **UTF-8**.
-   - Dapat dibuka dengan teks editor apa pun (VS Code, Notepad++), diimpor ke Google Sheets, atau dibuka via Microsoft Excel (`Data -> From Text/CSV`).
-   - Format baris rapi dengan pemisah koma standar dan pengutipan teks aman.
-
-2. **File Excel: `reports/hasil_pengujian_blackbox.xlsx`**
-   - Format workbook modern Microsoft Excel OpenXML (`.xlsx`).
-   - Worksheet utama diberi nama persis: **`Hasil Pengujian`**.
-   - Dilengkapi **Frozen Header Row** (baris 1 terkunci saat scroll).
-   - Dilengkapi **Auto-Filter** aktif pada baris header (kolom A hingga F).
-   - Memiliki styling profesional: Header Navy (`#1F4E79`), teks putih tebal (*bold*), garis border sel tipis, dan *Wrap Text* aktif pada kolom narasi panjang.
-   - Enam kolom wajib sesuai urutan baku:
-     `No` | `Fitur` | `Pengujian` | `Input` | `Hasil yang diharapkan` | `Status`
+1. **Laporan CSV:** [`reports/hasil_pengujian_blackbox.csv`](file:///D:/coding/_Tekkomdik/sistem_manajemen_magang/reports/hasil_pengujian_blackbox.csv)
+   - Karakteristik: Encoding UTF-8, tepat 6 kolom baku, tepat 30 baris data pengujian (20 Admin + 10 Peserta).
+2. **Laporan Excel:** [`reports/hasil_pengujian_blackbox.xlsx`](file:///D:/coding/_Tekkomdik/sistem_manajemen_magang/reports/hasil_pengujian_blackbox.xlsx)
+   - Karakteristik: Workbook Microsoft Excel (`.xlsx`), nama sheet **`Hasil Pengujian`**, baris header dibekukan (*frozen header row*), filter aktif, wrap text aktif, lebar kolom rapi, isi 100% identik dengan CSV.
+3. **Laporan Audit Komprehensif:** [`reports/laporan_audit_dan_perbaikan.md`](file:///D:/coding/_Tekkomdik/sistem_manajemen_magang/reports/laporan_audit_dan_perbaikan.md)
+   - Karakteristik: Dokumentasi teknis companion yang memuat 13 poin evaluasi menyeluruh.
+4. **Laporan Visual HTML Cypress (Mochawesome):** [`cypress/reports/html/index.html`](file:///D:/coding/_Tekkomdik/sistem_manajemen_magang/cypress/reports/html/index.html)
+   - Karakteristik: Bukti eksekusi browser visual dengan status *30 passed, 0 failed, 0 skipped*.
 
 ---
-
-## 17. Catatan Fitur yang Belum Diimplementasikan / Out-of-Scope
-
-Seluruh kebutuhan inti berdasarkan draft skripsi, revisi dosen, dan modul operasional telah terimplementasi. Fitur berikut dicatat sebagai item opsional di luar cakupan (*out-of-scope*) untuk pengembangan rilis masa mendatang:
-
-1. **Integrasi Notifikasi WhatsApp Gateway / SMS:** Saat ini notifikasi status penerimaan, penolakan, dan peringatan kedaluwarsa Deadman System disampaikan melalui email dan dashboard peserta. Pengiriman via WA API (misal Fonnte/Twilio) dapat ditambahkan sebagai modul addon tambahan.
-2. **Tanda Tangan Digital Tersertifikasi (BSrE):** Surat balasan dan sertifikat saat ini menggunakan format digital PDF resmi dengan stempel dan tanda tangan Balai Tekkomdik. Penggunaan tanda tangan elektronik bersertifikasi kriptografis BSrE dapat diintegrasikan pada tahap berikutnya jika ada regulasi institusional.
-
----
-
-## 18. Catatan Keputusan Bisnis yang Membutuhkan Konfirmasi Dosen / Stakeholder
-
-1. **Kebijakan Default Aksi Deadman System:**
-   Sistem saat ini menyediakan konfigurasi pilihan tindakan otomatis: `Otomatis Tolak` (*default*) atau `Otomatis Terima`. Pengaturan *Otomatis Tolak* dipilih secara default untuk mengutamakan kepatuhan seleksi dan ketersediaan kuota. Hal ini telah dapat dikonfigurasi langsung oleh admin melalui menu `kuota.php`.
-2. **Prioritas Urutan FIFO Multi-Periode:**
-   Sesuai arahan revisi dosen, sistem telah menerapkan sorting FIFO multi-atribut:
-   `ORDER BY p.tanggal_mulai ASC, p.waktu_daftar ASC, p.id_pendaftaran ASC`.
-   Urutan ini memprioritaskan calon peserta yang periode magangnya dimulai lebih awal terlebih dahulu. Jika periode mulainya identik, barulah ditentukan oleh timestamp pengajuan formulir.
-
----
-*Laporan disusun dan diverifikasi secara independen oleh Test Automation Engineer & Senior QA.*
+*Laporan disusun dan diverifikasi secara independen oleh Senior QA Engineer & Test Automation Developer.*

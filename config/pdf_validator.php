@@ -142,7 +142,7 @@ class PDFValidator {
         if (!empty($original_name)) {
             $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
             if ($ext !== 'pdf') {
-                return ['valid' => false, 'message' => 'Ekstensi berkas harus berformat .pdf.'];
+                return ['valid' => false, 'message' => 'Format Surat Pengantar harus PDF!'];
             }
         }
 

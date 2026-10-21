@@ -34,7 +34,7 @@ if (isset($_POST['upload_balasan'])) {
 
         if (!in_array($ext, $allowed_ext)) {
             $msg_type = "danger"; 
-            $msg_text = "Format file tidak valid! Gunakan PDF, JPG, atau PNG.";
+            $msg_text = "Format file tidak valid! Gunakan PDF/JPG/PNG.";
         } elseif ($file_size > 5 * 1024 * 1024) {
             $msg_type = "danger"; 
             $msg_text = "Ukuran file terlalu besar! Maksimal 5 MB.";

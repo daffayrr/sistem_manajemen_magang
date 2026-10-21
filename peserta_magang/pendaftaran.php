@@ -50,8 +50,18 @@ $is_kuota_penuh = ($db_kuota_error || $sisa_kuota <= 0);
 // ==================================================================
 if (isset($_POST['kirim_pendaftaran'])) {
     
-    // A. VALIDASI BACKEND: BLOKIR JIKA KUOTA PENUH ATAU DATABASE GAGAL
-    if ($is_kuota_penuh) {
+    // A. VALIDASI BACKEND: CEK DUPLIKASI PENDAFTARAN AKTIF
+    $stmt_cek_aktif = mysqli_prepare($koneksi, "SELECT id_daftar FROM pendaftaran WHERE id_user = ? AND status IN ('Menunggu', 'Diterima') LIMIT 1");
+    mysqli_stmt_bind_param($stmt_cek_aktif, "i", $id_user);
+    mysqli_stmt_execute($stmt_cek_aktif);
+    mysqli_stmt_store_result($stmt_cek_aktif);
+    $ada_aktif = (mysqli_stmt_num_rows($stmt_cek_aktif) > 0);
+    mysqli_stmt_close($stmt_cek_aktif);
+
+    if ($ada_aktif) {
+        $msg_type = "danger";
+        $msg_text = "Anda masih memiliki pengajuan magang yang sedang diproses atau aktif. Pendaftaran ulang tidak diizinkan.";
+    } elseif ($is_kuota_penuh) {
         $msg_type = "danger";
         $msg_text = "Mohon maaf, pendaftaran tidak dapat diproses karena Kuota Magang saat ini telah Penuh. Silakan tunggu hingga kuota tersedia kembali.";
     } else {
