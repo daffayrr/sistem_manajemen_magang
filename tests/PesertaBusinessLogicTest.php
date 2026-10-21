@@ -149,7 +149,8 @@ assertPesertaTest("Skenario 11: Backend menerapkan transaksi database dan lockin
 // ---------------------------------------------------------
 // 12. Perhitungan posisi antrean sesuai aturan FIFO modul admin
 // ---------------------------------------------------------
-$has_fifo_order = strpos($page_content, 'ORDER BY p.tgl_daftar ASC, p.id_daftar ASC') !== false;
+$has_fifo_order = strpos($page_content, 'ORDER BY p.tgl_daftar ASC, p.id_daftar ASC') !== false ||
+                  strpos($page_content, 'get_fifo_order_clause') !== false;
 
 assertPesertaTest("Skenario 12: Pengurutan antrean FIFO pada posisi_kuota.php identik dengan modul admin (tgl_daftar ASC, id_daftar ASC)",
     $has_fifo_order

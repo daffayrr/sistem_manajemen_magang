@@ -229,20 +229,64 @@ include 'layouts/navbar.php';
                     </table>
 
                     <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-folder-open me-2"></i> Dokumen Pengajuan (Dari Peserta)</h6>
-                    <div class="d-flex flex-wrap gap-3">
-                        <?php if(!empty($data['berkas'])): ?>
-                            <a href="../uploads/<?php echo htmlspecialchars($data['berkas']); ?>" target="_blank" class="btn btn-outline-danger fw-bold rounded-pill px-4">
-                                <i class="fa-solid fa-file-pdf me-2"></i> Surat Pengantar
-                            </a>
-                        <?php else: ?>
-                            <span class="badge bg-secondary p-2">Surat Pengantar Kosong</span>
-                        <?php endif; ?>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-dark">Surat Pengantar Magang (Wajib)</span>
+                                    <?php 
+                                    $sb = $data['status_berkas'] ?? 'Menunggu Validasi';
+                                    if ($sb === 'Valid Otomatis') {
+                                        echo '<span class="badge bg-success rounded-pill px-2 py-1"><i class="fa-solid fa-check me-1"></i> Valid Otomatis</span>';
+                                    } elseif ($sb === 'Valid Admin') {
+                                        echo '<span class="badge bg-primary rounded-pill px-2 py-1"><i class="fa-solid fa-user-check me-1"></i> Valid Admin</span>';
+                                    } elseif ($sb === 'Perlu Pemeriksaan Manual') {
+                                        echo '<span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="fa-solid fa-clock-rotate-left me-1"></i> Perlu Verifikasi</span>';
+                                    } else {
+                                        echo '<span class="badge bg-danger rounded-pill px-2 py-1"><i class="fa-solid fa-times me-1"></i> Tidak Valid</span>';
+                                    }
+                                    ?>
+                                </div>
+                                <?php if (!empty($data['catatan_berkas'])): ?>
+                                    <small class="text-muted d-block mb-3" style="font-size: 0.78rem;">Catatan: <?php echo htmlspecialchars($data['catatan_berkas']); ?></small>
+                                <?php endif; ?>
+                                <div class="d-flex gap-2">
+                                    <?php if(!empty($data['berkas'])): ?>
+                                        <a href="../uploads/<?php echo htmlspecialchars($data['berkas']); ?>" target="_blank" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-3">
+                                            <i class="fa-solid fa-file-pdf me-1"></i> Buka Surat Pengantar
+                                        </a>
+                                        <?php if ($sb === 'Perlu Pemeriksaan Manual'): ?>
+                                            <a href="peserta.php?aksi=validasi_berkas_manual&id=<?php echo $id_daftar; ?>" class="btn btn-info btn-sm text-white fw-bold rounded-pill px-3">
+                                                <i class="fa-solid fa-stamp me-1"></i> Setujui Manual
+                                            </a>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary p-2">Surat Pengantar Kosong</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
 
-                        <?php if(!empty($data['proposal'])): ?>
-                            <a href="../uploads/<?php echo htmlspecialchars($data['proposal']); ?>" target="_blank" class="btn btn-outline-primary fw-bold rounded-pill px-4">
-                                <i class="fa-solid fa-file-pdf me-2"></i> Proposal Magang
-                            </a>
-                        <?php endif; ?>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3 border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-dark">Proposal Magang (Opsional)</span>
+                                    <?php if(!empty($data['proposal'])): ?>
+                                        <span class="badge bg-info text-white rounded-pill px-2 py-1"><i class="fa-solid fa-check me-1"></i> Terunggah</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary text-white rounded-pill px-2 py-1">Tidak Diunggah</span>
+                                    <?php endif; ?>
+                                </div>
+                                <small class="text-muted d-block mb-3" style="font-size: 0.78rem;">Proposal bersifat opsional dan tidak membatalkan pengajuan.</small>
+                                <?php if(!empty($data['proposal'])): ?>
+                                    <a href="../uploads/<?php echo htmlspecialchars($data['proposal']); ?>" target="_blank" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-3">
+                                        <i class="fa-solid fa-file-pdf me-1"></i> Buka Proposal
+                                    </a>
+                                <?php else: ?>
+                                    <span class="text-muted small fst-italic">Peserta tidak melampirkan proposal.</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

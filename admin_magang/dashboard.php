@@ -13,6 +13,8 @@ if ($status_login != 'login' || !in_array($role_akses, ['Admin', 'Super Admin'])
 }
 
 require_once '../config/database.php';
+require_once '../config/fifo_helper.php';
+require_once '../config/DeadmanSystem.php';
 
 /** @var mysqli $koneksi */
 
@@ -38,13 +40,14 @@ $query_waiting = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftar
 $data_waiting  = mysqli_fetch_assoc($query_waiting);
 $jumlah_menunggu = (int) ($data_waiting['total'] ?? 0);
 
-// E. Ambil Data Antrean FIFO (First In First Out)
-// Menampilkan pendaftar yang belum diverifikasi, diurutkan dari yang paling lama mendaftar (timestamp ASC + deterministic tie-breaker id_daftar ASC)
-$query_fifo = "SELECT p.id_daftar, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, u.nama, u.asal_instansi 
+// E. Ambil Data Antrean FIFO Berdasarkan Periode Magang
+// Urutan: 1. Tanggal Mulai ASC, 2. Tanggal Selesai ASC, 3. Timestamp Daftar ASC, 4. ID Unik ASC
+$order_fifo_clause = get_fifo_order_clause('p');
+$query_fifo = "SELECT p.id_daftar, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, p.status_berkas, u.nama, u.asal_instansi 
                FROM pendaftaran p
                JOIN peserta u ON p.id_user = u.id_user
                WHERE p.status = 'Menunggu'
-               ORDER BY p.tgl_daftar ASC, p.id_daftar ASC 
+               $order_fifo_clause 
                LIMIT 5"; 
 $result_fifo = mysqli_query($koneksi, $query_fifo);
 
@@ -191,6 +194,40 @@ include 'layouts/navbar.php';
                             <i class="fa-solid fa-user-plus text-success me-2"></i> Tambah Admin Baru
                         </a>
                     </div>
+                </div>
+            </div>
+
+            <?php 
+            $deadman_dash = new DeadmanSystem($koneksi, true, 7);
+            $overdue_dash = $deadman_dash->getPendingOverdueCandidates();
+            $tot_overdue = count($overdue_dash);
+            ?>
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold m-0 text-dark"><i class="fa-solid fa-stopwatch text-warning me-2"></i>Deadman System</h6>
+                    <span class="badge <?php echo ($tot_overdue > 0) ? 'bg-warning text-dark' : 'bg-success'; ?> rounded-pill">
+                        <?php echo ($tot_overdue > 0) ? "$tot_overdue Tertahan" : "Normal"; ?>
+                    </span>
+                </div>
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 small">
+                        <span class="text-muted">Ambang Batas Toleransi:</span>
+                        <span class="fw-bold">7 Hari</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 small">
+                        <span class="text-muted">Mode Eksekusi:</span>
+                        <span class="badge bg-light text-dark border">DRY-RUN (Simulasi)</span>
+                    </div>
+                    <?php if ($tot_overdue > 0): ?>
+                        <div class="alert alert-warning py-2 px-3 small border-0 mb-2 mt-2">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i> Ada <?php echo $tot_overdue; ?> pendaftaran tertahan > 7 hari.
+                        </div>
+                        <a href="peserta.php?filter=Menunggu" class="btn btn-sm btn-outline-warning text-dark w-100 rounded-pill mt-1">
+                            Periksa Antrean Menunggu
+                        </a>
+                    <?php else: ?>
+                        <small class="text-success d-block mt-2"><i class="fa-solid fa-check me-1"></i> Tidak ada antrean yang melewati batas waktu.</small>
+                    <?php endif; ?>
                 </div>
             </div>
 

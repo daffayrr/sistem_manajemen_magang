@@ -8,6 +8,7 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] != 'login' || $_SESSION['
 }
 
 require_once '../config/database.php';
+require_once '../config/fifo_helper.php';
 
 /** @var mysqli $koneksi */
 $id_user = (int) $_SESSION['peserta_id'];
@@ -93,13 +94,15 @@ $my_reg = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_my));
 mysqli_stmt_close($stmt_my);
 
 // ==========================================================
-// 4. AMBIL ANTREAN PENDAFTARAN (FIFO: tgl_daftar ASC, id_daftar ASC)
+// 4. AMBIL ANTREAN PENDAFTARAN (FIFO PERIODE MAGANG)
+//    Prioritas: 1. Tanggal Mulai ASC, 2. Tanggal Selesai ASC, 3. Timestamp Daftar ASC, 4. ID Unik ASC
 //    Menerapkan Prinsip Privasi: Hanya ID Peserta, Periode, & Timestamp
 // ==========================================================
-$query_queue = "SELECT p.id_daftar, p.id_user, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, p.status 
+$order_fifo_clause = get_fifo_order_clause('p');
+$query_queue = "SELECT p.id_daftar, p.id_user, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, p.status, p.status_berkas 
                 FROM pendaftaran p
                 WHERE p.status = 'Menunggu'
-                ORDER BY p.tgl_daftar ASC, p.id_daftar ASC";
+                $order_fifo_clause";
 $result_queue = mysqli_query($koneksi, $query_queue);
 
 // Hitung posisi antrean peserta yang sedang login (jika statusnya Menunggu)
@@ -274,7 +277,7 @@ include 'layouts/navbar.php';
                             <?php if ($my_position === 1): ?>
                                 <span class="badge bg-primary ms-1"><i class="fa-solid fa-bolt me-1"></i> Prioritas 1</span>
                             <?php endif; ?>
-                            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">*Berdasarkan urutan antrean teratas sistem.</small>
+                            <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">*Berdasarkan metode FIFO Periode Magang (Tanggal Mulai Terawal).</small>
                         </div>
                     <?php endif; ?>
                 </div>

@@ -8,6 +8,8 @@ if (!isset($_SESSION['status']) || $_SESSION['status'] != 'login' || $_SESSION['
 }
 
 require_once '../config/database.php';
+require_once '../config/fifo_helper.php';
+require_once '../config/pdf_validator.php';
 
 /** @var mysqli $koneksi */
 
@@ -63,20 +65,13 @@ if (isset($_POST['kirim_pendaftaran'])) {
         $tanggal_mulai    = $_POST['tanggal_mulai'] ?? '';
         $tanggal_selesai  = $_POST['tanggal_selesai'] ?? '';
         
-        // C. VALIDASI FILE PDF
-        $allowed_ext = ['pdf'];
-        $file_surat  = $_FILES['berkas'] ?? null;
-        $file_prop   = $_FILES['proposal'] ?? null;
+        // C. VALIDASI FILE PDF DENGAN PDF VALIDATOR & CONTENT CLASSIFIER
+        $file_surat = $_FILES['berkas'] ?? null;
+        $file_prop  = $_FILES['proposal'] ?? null;
 
-        $ext_surat   = $file_surat ? strtolower(pathinfo($file_surat['name'], PATHINFO_EXTENSION)) : '';
-        $ext_prop    = ($file_prop && !empty($file_prop['name'])) ? strtolower(pathinfo($file_prop['name'], PATHINFO_EXTENSION)) : '';
-
-        if (empty($file_surat['name']) || !in_array($ext_surat, $allowed_ext)) {
+        if (empty($file_surat['name']) || empty($file_surat['tmp_name'])) {
             $msg_type = "danger"; 
-            $msg_text = "Format Surat Pengantar wajib PDF!";
-        } elseif (!empty($file_prop['name']) && !in_array($ext_prop, $allowed_ext)) {
-            $msg_type = "danger"; 
-            $msg_text = "Format Proposal wajib PDF!";
+            $msg_text = "Berkas Surat Pengantar Magang wajib diunggah!";
         } elseif (empty($tanggal_mulai) || empty($tanggal_selesai)) {
             $msg_type = "danger"; 
             $msg_text = "Tanggal mulai dan selesai magang wajib diisi!";
@@ -84,73 +79,105 @@ if (isset($_POST['kirim_pendaftaran'])) {
             $msg_type = "danger"; 
             $msg_text = "Tanggal selesai magang harus lebih besar dari tanggal mulai!";
         } else {
+            // Evaluasi Surat Pengantar
+            $val_surat = PDFValidator::validateSuratPengantar($file_surat['tmp_name'], $file_surat['name']);
             
-            // D. TRANSAKSI DATABASE UNTUK MENJAGA KONSISTENSI KUOTA
-            mysqli_begin_transaction($koneksi);
+            // Evaluasi Proposal (Opsional)
+            $val_prop = null;
+            if (!empty($file_prop['name']) && !empty($file_prop['tmp_name'])) {
+                $val_prop = PDFValidator::validateProposal($file_prop['tmp_name'], $file_prop['name']);
+            }
 
-            // Kunci baris kuota untuk memeriksa ketersediaan saat pengiriman serentak
-            $q_lock_kuota = mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota WHERE id_kuota = 1 FOR UPDATE");
-            $q_lock_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as tot FROM pendaftaran WHERE status = 'Diterima' FOR UPDATE");
-            $d_lock_k = mysqli_fetch_assoc($q_lock_kuota);
-            $d_lock_a = mysqli_fetch_assoc($q_lock_aktif);
-
-            $curr_maks = (int) ($d_lock_k['jumlah_maks'] ?? 0);
-            $curr_aktf = (int) ($d_lock_a['tot'] ?? 0);
-
-            if (($curr_maks - $curr_aktf) <= 0) {
-                mysqli_rollback($koneksi);
+            if (!$val_surat['valid_technical']) {
                 $msg_type = "danger";
-                $msg_text = "Mohon maaf, pendaftaran gagal dikirim karena kuota baru saja terpenuhi. Silakan coba kembali nanti.";
+                $msg_text = "Berkas Surat Pengantar tidak valid: " . $val_surat['catatan'];
+            } elseif ($val_surat['status_berkas'] === 'Tidak Valid') {
+                $msg_type = "danger";
+                $msg_text = "Berkas Surat Pengantar ditolak: " . $val_surat['catatan'];
+            } elseif ($val_prop !== null && !$val_prop['valid_technical']) {
+                $msg_type = "danger";
+                $msg_text = "Berkas Proposal tidak valid: " . $val_prop['catatan'];
             } else {
-                // E. UPDATE DATA DIRI LENGKAP
-                $stmt_profil = mysqli_prepare($koneksi, "UPDATE peserta SET no_hp=?, alamat=?, asal_instansi=?, alamat_instansi=?, no_hp_pendamping=? WHERE id_user=?");
-                mysqli_stmt_bind_param($stmt_profil, "sssssi", $no_hp, $alamat, $asal_instansi, $alamat_instansi, $no_hp_pendamping, $id_user);
                 
-                if (mysqli_stmt_execute($stmt_profil)) {
-                    mysqli_stmt_close($stmt_profil);
+                // D. TRANSAKSI DATABASE UNTUK MENJAGA KONSISTENSI KUOTA
+                mysqli_begin_transaction($koneksi);
+
+                // Kunci baris kuota untuk memeriksa ketersediaan saat pengiriman serentak
+                $q_lock_kuota = mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota WHERE id_kuota = 1 FOR UPDATE");
+                $q_lock_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as tot FROM pendaftaran WHERE status = 'Diterima' FOR UPDATE");
+                $d_lock_k = mysqli_fetch_assoc($q_lock_kuota);
+                $d_lock_a = mysqli_fetch_assoc($q_lock_aktif);
+
+                $curr_maks = (int) ($d_lock_k['jumlah_maks'] ?? 0);
+                $curr_aktf = (int) ($d_lock_a['tot'] ?? 0);
+
+                if (($curr_maks - $curr_aktf) <= 0) {
+                    mysqli_rollback($koneksi);
+                    $msg_type = "danger";
+                    $msg_text = "Mohon maaf, pendaftaran gagal dikirim karena kuota baru saja terpenuhi. Silakan coba kembali nanti.";
+                } else {
+                    // E. UPDATE DATA DIRI LENGKAP
+                    $stmt_profil = mysqli_prepare($koneksi, "UPDATE peserta SET no_hp=?, alamat=?, asal_instansi=?, alamat_instansi=?, no_hp_pendamping=? WHERE id_user=?");
+                    mysqli_stmt_bind_param($stmt_profil, "sssssi", $no_hp, $alamat, $asal_instansi, $alamat_instansi, $no_hp_pendamping, $id_user);
                     
-                    // F. PINDAHKAN FILE UPLOAD
-                    $upload_dir = __DIR__ . '/../uploads/';
-                    $nama_surat_baru = $id_user . "_SURAT_" . time() . "_" . bin2hex(random_bytes(3)) . "." . $ext_surat;
-                    $nama_prop_baru  = "";
-                    
-                    if (move_uploaded_file($file_surat['tmp_name'], $upload_dir . $nama_surat_baru)) {
+                    if (mysqli_stmt_execute($stmt_profil)) {
+                        mysqli_stmt_close($stmt_profil);
                         
-                        if (!empty($file_prop['name'])) {
-                            $nama_prop_baru = $id_user . "_PROPOSAL_" . time() . "_" . bin2hex(random_bytes(3)) . "." . $ext_prop;
-                            move_uploaded_file($file_prop['tmp_name'], $upload_dir . $nama_prop_baru);
-                        }
-
-                        // G. SIMPAN DATA PENDAFTARAN DENGAN PRESISI MILIDETIK (NOW(3))
-                        $stmt_ins = mysqli_prepare($koneksi, "INSERT INTO pendaftaran (id_user, tgl_daftar, tanggal_mulai, tanggal_selesai, status, berkas, proposal) VALUES (?, NOW(3), ?, ?, 'Menunggu', ?, ?)");
-                        mysqli_stmt_bind_param($stmt_ins, "issss", $id_user, $tanggal_mulai, $tanggal_selesai, $nama_surat_baru, $nama_prop_baru);
+                        // F. PINDAHKAN FILE UPLOAD DENGAN NAMA AMAN & ACAK
+                        $upload_dir = __DIR__ . '/../uploads/';
+                        $ext_surat  = strtolower(pathinfo($file_surat['name'], PATHINFO_EXTENSION));
+                        $nama_surat_baru = $id_user . "_SURAT_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext_surat;
                         
-                        if (mysqli_stmt_execute($stmt_ins)) {
-                            $new_id = mysqli_insert_id($koneksi);
-                            mysqli_stmt_close($stmt_ins);
+                        $nama_prop_baru   = "";
+                        $status_prop_val  = "Tidak Diunggah";
+                        
+                        if (move_uploaded_file($file_surat['tmp_name'], $upload_dir . $nama_surat_baru)) {
+                            
+                            if (!empty($file_prop['name']) && !empty($file_prop['tmp_name'])) {
+                                $ext_prop = strtolower(pathinfo($file_prop['name'], PATHINFO_EXTENSION));
+                                $nama_prop_baru = $id_user . "_PROPOSAL_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext_prop;
+                                move_uploaded_file($file_prop['tmp_name'], $upload_dir . $nama_prop_baru);
+                                $status_prop_val = "Valid Otomatis";
+                            }
 
-                            mysqli_commit($koneksi);
+                            $status_berkas_val  = $val_surat['status_berkas'];
+                            $catatan_berkas_val = $val_surat['catatan'];
 
-                            catat_audit($koneksi, null, 'Peserta (Self)', $new_id, 'pendaftaran', 'DAFTAR_BARU', null, 'Menunggu', "Peserta ID: $id_user berhasil mendaftar magang");
-                            $msg_type = "success";
-                            $msg_text = "Pendaftaran Berhasil! Silakan tunggu proses verifikasi oleh Admin.";
-                            header("Refresh:2"); 
+                            // G. SIMPAN DATA PENDAFTARAN DENGAN PRESISI MILIDETIK (NOW(3)) & METADATA DOKUMEN
+                            $stmt_ins = mysqli_prepare($koneksi, "INSERT INTO pendaftaran 
+                                (id_user, tgl_daftar, tanggal_mulai, tanggal_selesai, status, berkas, status_berkas, catatan_berkas, proposal, status_proposal) 
+                                VALUES (?, NOW(3), ?, ?, 'Menunggu', ?, ?, ?, ?, ?)");
+                            mysqli_stmt_bind_param($stmt_ins, "isssssss", $id_user, $tanggal_mulai, $tanggal_selesai, $nama_surat_baru, $status_berkas_val, $catatan_berkas_val, $nama_prop_baru, $status_prop_val);
+                            
+                            if (mysqli_stmt_execute($stmt_ins)) {
+                                $new_id = mysqli_insert_id($koneksi);
+                                mysqli_stmt_close($stmt_ins);
+
+                                mysqli_commit($koneksi);
+
+                                catat_audit($koneksi, null, 'Peserta (Self)', $new_id, 'pendaftaran', 'DAFTAR_BARU', null, 'Menunggu', "Peserta ID: $id_user mendaftar magang. Status Berkas: $status_berkas_val ($catatan_berkas_val)");
+                                $msg_type = "success";
+                                $msg_text = "Pendaftaran Berhasil Dikirim! " . 
+                                            ($status_berkas_val === 'Valid Otomatis' ? "Berkas surat pengantar terverifikasi otomatis." : "Berkas menunggu verifikasi petugas.") . 
+                                            " Silakan cek status dan posisi antrean Anda.";
+                                header("Refresh:2"); 
+                            } else {
+                                mysqli_stmt_close($stmt_ins);
+                                mysqli_rollback($koneksi);
+                                $msg_type = "danger"; 
+                                $msg_text = "Gagal menyimpan data pendaftaran: " . mysqli_error($koneksi);
+                            }
                         } else {
-                            mysqli_stmt_close($stmt_ins);
                             mysqli_rollback($koneksi);
                             $msg_type = "danger"; 
-                            $msg_text = "Gagal menyimpan data pendaftaran: " . mysqli_error($koneksi);
+                            $msg_text = "Gagal memproses berkas surat pengantar di server.";
                         }
                     } else {
+                        mysqli_stmt_close($stmt_profil);
                         mysqli_rollback($koneksi);
                         $msg_type = "danger"; 
-                        $msg_text = "Gagal mengunggah berkas surat pengantar.";
+                        $msg_text = "Gagal memperbarui profil peserta: " . mysqli_error($koneksi);
                     }
-                } else {
-                    mysqli_stmt_close($stmt_profil);
-                    mysqli_rollback($koneksi);
-                    $msg_type = "danger"; 
-                    $msg_text = "Gagal memperbarui profil peserta: " . mysqli_error($koneksi);
                 }
             }
         }
@@ -294,6 +321,21 @@ include 'layouts/navbar.php';
                     <div class="row mb-2">
                         <div class="col-6 text-muted small">Waktu Pengajuan (FIFO)</div>
                         <div class="col-6 fw-bold small text-dark"><?php echo date('d M Y, H:i:s', strtotime($data_pendaftaran_aktif['tgl_daftar'])); ?> WIB</div>
+                    </div>
+                    <div class="row mb-0">
+                        <div class="col-6 text-muted small">Status Verifikasi Berkas</div>
+                        <div class="col-6 fw-bold small">
+                            <?php 
+                            $st_b = $data_pendaftaran_aktif['status_berkas'] ?? 'Menunggu Validasi';
+                            if ($st_b == 'Valid Otomatis' || $st_b == 'Valid Admin') {
+                                echo '<span class="text-success"><i class="fa-solid fa-check-circle me-1"></i> Tervalidasi</span>';
+                            } elseif ($st_b == 'Perlu Pemeriksaan Manual') {
+                                echo '<span class="text-warning text-dark"><i class="fa-solid fa-clock-rotate-left me-1"></i> Perlu Verifikasi Petugas</span>';
+                            } else {
+                                echo '<span class="text-danger"><i class="fa-solid fa-times-circle me-1"></i> ' . htmlspecialchars($st_b) . '</span>';
+                            }
+                            ?>
+                        </div>
                     </div>
                 </div>
                 <div class="mt-4 d-flex justify-content-center gap-2">

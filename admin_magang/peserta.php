@@ -11,6 +11,9 @@ if ($status_login != 'login' || !in_array($role_akses, ['Admin', 'Super Admin'])
 }
 
 require_once '../config/database.php';
+require_once '../config/fifo_helper.php';
+require_once '../config/pdf_validator.php';
+require_once '../config/DeadmanSystem.php';
 
 /** @var mysqli $koneksi */
 
@@ -25,22 +28,29 @@ if (isset($_GET['aksi']) && isset($_GET['id'])) {
     $aksi      = $_GET['aksi'];
 
     if ($aksi == 'terima' || $aksi == 'tolak') {
-        // ENFORCE FIFO AT BACKEND: Cek apakah pendaftar ini adalah giliran pertama di antrean Menunggu
-        $q_cur = mysqli_query($koneksi, "SELECT status FROM pendaftaran WHERE id_daftar = '$id_daftar'");
+        // ENFORCE FIFO AT BACKEND: Cek apakah pendaftar ini adalah giliran pertama di antrean Menunggu (FIFO Periode Magang)
+        $q_cur = mysqli_query($koneksi, "SELECT status, status_berkas FROM pendaftaran WHERE id_daftar = '$id_daftar'");
         $d_cur = mysqli_fetch_assoc($q_cur);
 
         if ($d_cur && $d_cur['status'] === 'Menunggu') {
-            $q_fifo_first = mysqli_query($koneksi, "SELECT id_daftar FROM pendaftaran WHERE status = 'Menunggu' ORDER BY tgl_daftar ASC, id_daftar ASC LIMIT 1");
-            $first_in_queue = mysqli_fetch_assoc($q_fifo_first);
-
-            if ($first_in_queue && (int) $first_in_queue['id_daftar'] !== $id_daftar) {
+            if (!is_fifo_top($koneksi, $id_daftar, 'Menunggu')) {
+                $top_cand = get_top_fifo_candidate($koneksi, 'Menunggu');
+                $top_name = $top_cand ? htmlspecialchars($top_cand['nama']) : 'Pendaftar Pertama';
                 $msg_type = "gagal";
-                $msg_text = "Pelanggaran Antrean FIFO! Pendaftar urutan pertama harus diproses terlebih dahulu sebelum memproses pendaftar berikutnya.";
+                $msg_text = "Pelanggaran Antrean FIFO! Pendaftar urutan pertama ($top_name) harus diproses terlebih dahulu sesuai prioritas periode magang.";
                 goto end_aksi;
             }
         }
 
         if ($aksi == 'terima') {
+            // Validasi status dokumen surat pengantar
+            $st_berkas = $d_cur['status_berkas'] ?? 'Menunggu Validasi';
+            if ($st_berkas === 'Tidak Valid') {
+                $msg_type = "gagal";
+                $msg_text = "Pendaftar tidak dapat diterima karena berkas Surat Pengantar teridentifikasi Tidak Valid / Bukan Surat Pengantar resmi.";
+                goto end_aksi;
+            }
+
             // Transaksi Database & Pessimistic Locking untuk Kuota
             mysqli_begin_transaction($koneksi);
             $q_maks = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota WHERE id_kuota = 1 FOR UPDATE"));
@@ -115,6 +125,17 @@ if (isset($_GET['aksi']) && isset($_GET['id'])) {
             $msg_type = "sukses"; 
             $msg_text = "Magang Selesai! Data dipindah ke Arsip, Kuota kembali kosong (+1).";
         }
+    } elseif ($aksi == 'validasi_berkas_manual') {
+        $admin_id = $_SESSION['admin_id'] ?? null;
+        $admin_nama = $_SESSION['admin_nama'] ?? 'Admin';
+        $stmt_val = mysqli_prepare($koneksi, "UPDATE pendaftaran SET status_berkas='Valid Admin', catatan_berkas='Divalidasi manual oleh Admin' WHERE id_daftar=?");
+        mysqli_stmt_bind_param($stmt_val, "i", $id_daftar);
+        mysqli_stmt_execute($stmt_val);
+        mysqli_stmt_close($stmt_val);
+
+        catat_audit($koneksi, $admin_id, $admin_nama, $id_daftar, 'pendaftaran', 'VALIDASI_BERKAS_MANUAL', 'Perlu Pemeriksaan Manual', 'Valid Admin', "Admin $admin_nama memvalidasi surat pengantar secara manual");
+        $msg_type = "sukses";
+        $msg_text = "Berkas Surat Pengantar peserta berhasil divalidasi secara manual (Valid Admin).";
     }
 }
 end_aksi:
@@ -128,23 +149,23 @@ if (!empty($keyword)) {
     $search_sql = "AND (u.nama LIKE '%$safe_q%' OR u.asal_instansi LIKE '%$safe_q%')";
 }
 
-// Menentukan ID Pertama antrean FIFO Menunggu (untuk penguncian tombol pada UI)
+// Menentukan ID Pertama antrean FIFO Periode Magang (untuk penguncian tombol pada UI)
 $top_fifo_id = null;
 if ($filter_status == 'Menunggu') {
-    $q_top = mysqli_query($koneksi, "SELECT id_daftar FROM pendaftaran WHERE status = 'Menunggu' ORDER BY tgl_daftar ASC, id_daftar ASC LIMIT 1");
-    if ($row_top = mysqli_fetch_assoc($q_top)) {
-        $top_fifo_id = (int) $row_top['id_daftar'];
+    $top_row = get_top_fifo_candidate($koneksi, 'Menunggu');
+    if ($top_row) {
+        $top_fifo_id = (int) $top_row['id_daftar'];
     }
 }
 
 // Logika Pengurutan:
-// - Status 'Menunggu': FIFO ketat (tgl_daftar ASC, id_daftar ASC)
+// - Status 'Menunggu': FIFO Periode Magang (tanggal_mulai ASC, tanggal_selesai ASC, tgl_daftar ASC, id_daftar ASC)
 // - Status 'Selesai' (Arsip): Berdasarkan waktu penyelesaian terbaru (completed_at DESC, id_daftar DESC)
 // - Status lainnya: Waktu verifikasi terbaru (tgl_verifikasi DESC, id_daftar DESC)
 if ($filter_status == 'Selesai') {
     $order_clause = "ORDER BY COALESCE(p.completed_at, p.tgl_verifikasi, p.tgl_daftar) DESC, p.id_daftar DESC";
 } elseif ($filter_status == 'Menunggu') {
-    $order_clause = "ORDER BY p.tgl_daftar ASC, p.id_daftar ASC";
+    $order_clause = get_fifo_order_clause('p');
 } else {
     $order_clause = "ORDER BY COALESCE(p.tgl_verifikasi, p.tgl_daftar) DESC, p.id_daftar DESC";
 }
@@ -179,6 +200,25 @@ include 'layouts/navbar.php';
             <i class="fa-solid <?php echo ($msg_type=='sukses') ? 'fa-check-circle' : 'fa-circle-exclamation'; ?> me-2"></i>
             <?php echo htmlspecialchars($msg_text, ENT_QUOTES, 'UTF-8'); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php 
+    // Audit Deadman System untuk peringatan admin
+    $deadman_engine = new DeadmanSystem($koneksi, true, 7);
+    $overdue_items = $deadman_engine->getPendingOverdueCandidates();
+    $count_overdue = count($overdue_items);
+    if ($count_overdue > 0 && $filter_status == 'Menunggu'): 
+    ?>
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between mb-4">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-triangle-exclamation fa-2x text-warning me-3"></i>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">Peringatan Deadman System: <?php echo $count_overdue; ?> Pendaftar Melewati Batas Waktu</h6>
+                    <small class="text-muted">Terdapat pendaftar berstatus 'Menunggu' lebih dari 7 hari yang belum diproses oleh administrator.</small>
+                </div>
+            </div>
+            <a href="dashboard.php" class="btn btn-sm btn-outline-dark rounded-pill px-3">Pantau Sistem</a>
         </div>
     <?php endif; ?>
 
@@ -288,6 +328,18 @@ include 'layouts/navbar.php';
                                 <td class="text-center">
                                     <?php if (!empty($row['berkas'])): ?>
                                         <a href="../uploads/<?php echo htmlspecialchars($row['berkas']); ?>" target="_blank" class="text-danger" title="Lihat Surat Pengantar"><i class="fa-solid fa-file-pdf fa-lg"></i></a>
+                                        <?php 
+                                        $sb = $row['status_berkas'] ?? 'Menunggu Validasi';
+                                        if ($sb === 'Valid Otomatis') {
+                                            echo '<span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-2 py-0 mt-1 d-block" style="font-size:0.68rem;"><i class="fa-solid fa-check me-1"></i> Valid Otomatis</span>';
+                                        } elseif ($sb === 'Valid Admin') {
+                                            echo '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2 py-0 mt-1 d-block" style="font-size:0.68rem;"><i class="fa-solid fa-user-check me-1"></i> Valid Admin</span>';
+                                        } elseif ($sb === 'Perlu Pemeriksaan Manual') {
+                                            echo '<span class="badge bg-warning bg-opacity-10 text-dark border border-warning rounded-pill px-2 py-0 mt-1 d-block" style="font-size:0.68rem;" title="' . htmlspecialchars($row['catatan_berkas'] ?? 'Perlu Verifikasi Manual') . '"><i class="fa-solid fa-clock-rotate-left me-1"></i> Verifikasi Manual</span>';
+                                        } elseif ($sb === 'Tidak Valid') {
+                                            echo '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-2 py-0 mt-1 d-block" style="font-size:0.68rem;" title="' . htmlspecialchars($row['catatan_berkas'] ?? 'Dokumen Tidak Valid') . '"><i class="fa-solid fa-times me-1"></i> Tidak Valid</span>';
+                                        }
+                                        ?>
                                     <?php else: ?> - <?php endif; ?>
                                 </td>
 
