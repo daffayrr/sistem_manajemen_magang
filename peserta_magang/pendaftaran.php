@@ -33,7 +33,7 @@ if (isset($_POST['kirim_pendaftaran'])) {
     
     // B. VALIDASI FILE
     $allowed_ext = ['pdf'];
-    $file_surat = $_FILES['surat_pengantar'];
+    $file_surat = $_FILES['berkas'];
     $ext_surat  = strtolower(pathinfo($file_surat['name'], PATHINFO_EXTENSION));
     
     $file_prop  = $_FILES['proposal'];
@@ -70,7 +70,7 @@ if (isset($_POST['kirim_pendaftaran'])) {
                 }
 
                 // E. SIMPAN PENDAFTARAN (Logika Baru tanpa id_kuota)
-                $query_simpan = "INSERT INTO pendaftaran (id_user, tgl_daftar, tanggal_mulai, tanggal_selesai, status, surat_pengantar, proposal) 
+                $query_simpan = "INSERT INTO pendaftaran (id_user, tgl_daftar, tanggal_mulai, tanggal_selesai, status, berkas, proposal) 
                                     VALUES ('$id_user', NOW(), '$tanggal_mulai', '$tanggal_selesai', 'Menunggu', '$nama_surat_baru', '$nama_prop_baru')";
                 
                 if (mysqli_query($koneksi, $query_simpan)) {
@@ -240,7 +240,7 @@ include 'layouts/navbar.php';
                             <h6 class="fw-bold text-dark mb-3 text-uppercase small" style="letter-spacing: 1px;">Unggah Berkas</h6>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-dark">Surat Pengantar (Wajib) <span class="text-danger">*</span></label>
-                                <input type="file" name="surat_pengantar" class="form-control" accept=".pdf" required>
+                                <input type="file" name="berkas" class="form-control" accept=".pdf" required>
                                 <div class="form-text small text-muted">Format PDF, Max 2MB.</div>
                             </div>
                             <div class="mb-4">

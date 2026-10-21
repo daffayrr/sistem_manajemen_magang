@@ -1,6 +1,10 @@
 describe('Testing Fungsionalitas dan Navigasi Dashboard Admin', () => {
   
     beforeEach(() => {
+      // Clear cookies and session to avoid auto-redirect if already logged in
+      cy.clearCookies();
+      cy.clearLocalStorage();
+
       // Skenario bypass login untuk masuk ke dashboard
       cy.visit('/index.php');
       cy.get('input[name="username"]').type('admin'); // Sesuaikan kredensial di DB Anda

@@ -22,7 +22,7 @@ $password_hash = md5($password_raw);
 
 // 3. Query Simpan Data
 // Kita set role default = 'Peserta' dan foto_profil = 'default.jpg'
-$query_simpan = "INSERT INTO peserta (nama_lengkap, email, password, no_hp, asal_instansi, role, foto_profil) 
+$query_simpan = "INSERT INTO peserta (nama, email, password, no_hp, asal_instansi, role, foto_profil) 
                  VALUES ('$nama_lengkap', '$email', '$password_hash', '$no_hp', '$asal_instansi', 'Peserta', 'default.jpg')";
 
 if (mysqli_query($koneksi, $query_simpan)) {

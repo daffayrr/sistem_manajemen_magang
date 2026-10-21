@@ -19,12 +19,13 @@ describe('Testing Fungsionalitas Form Pendaftaran Magang', () => {
   
     // Blok 'beforeEach' untuk login menggunakan akun baru yang barusan dibuat
     beforeEach(() => {
-      cy.visit('/index.php');
+      // Gunakan path relatif dari baseUrl
+      cy.visit('/index.php'); 
       cy.get('input[name="username"]').type(uniqueEmail); 
       cy.get('input[name="password"]').type(passwordPeserta);
       cy.get('button[type="submit"]').click();
-  
-      // Masuk ke halaman form pendaftaran
+      
+      // Pastikan diarahkan ke folder peserta_magang
       cy.visit('/peserta_magang/pendaftaran.php');
     });
   
@@ -41,7 +42,7 @@ describe('Testing Fungsionalitas Form Pendaftaran Magang', () => {
       cy.get('input[name="tanggal_selesai"]').type('2026-11-01'); // Mundur ke bulan 11
   
       // Upload file dummy (Pastikan file surat_dummy.pdf ada di cypress/fixtures/)
-      cy.get('input[name="surat_pengantar"]').selectFile('cypress/fixtures/surat_dummy.pdf');
+      cy.get('input[name="berkas"]').selectFile('cypress/fixtures/surat_dummy.pdf');
   
       // Menangani Pop-up Konfirmasi JS (return confirm)
       // Cypress secara default menekan 'Cancel', kita paksa tekan 'OK' (true)
@@ -66,7 +67,7 @@ describe('Testing Fungsionalitas Form Pendaftaran Magang', () => {
       cy.get('input[name="tanggal_mulai"]').type('2026-08-01');
       cy.get('input[name="tanggal_selesai"]').type('2026-11-01');
   
-      cy.get('input[name="surat_pengantar"]').selectFile('cypress/fixtures/surat_dummy.pdf');
+      cy.get('input[name="berkas"]').selectFile('cypress/fixtures/surat_dummy.pdf');
   
       cy.on('window:confirm', () => true);
       cy.get('button[name="kirim_pendaftaran"]').click();

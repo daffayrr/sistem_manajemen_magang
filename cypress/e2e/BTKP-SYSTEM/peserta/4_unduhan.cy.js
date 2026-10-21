@@ -55,7 +55,7 @@ describe('Testing Dinamis Halaman Unduhan & Hasil Seleksi', () => {
       cy.get('input[name="tanggal_mulai"]').type('2026-08-01');
       cy.get('input[name="tanggal_selesai"]').type('2026-11-01');
       
-      cy.get('input[name="surat_pengantar"]').selectFile('cypress/fixtures/surat_dummy.pdf');
+      cy.get('input[name="berkas"]').selectFile('cypress/fixtures/surat_dummy.pdf');
   
       // Submit form pendaftaran
       cy.on('window:confirm', () => true);

@@ -1,28 +1,17 @@
-const { defineConfig } = require("cypress");
+const { defineConfig } = require('cypress');
 
 module.exports = defineConfig({
-  reporter: 'cypress-mochawesome-reporter', // Hasil untuk report
+  reporter: 'cypress-mochawesome-reporter',
   reporterOptions: {
-    charts: true,              // Mengaktifkan grafik Pie Chart
-    reportPageTitle: 'Blackbox Test Sistem Magang BTKP', // Judul tab di browser
-    embeddedScreenshots: true, // Memasukkan screenshot ke dalam report jika ada error
-    inlineAssets: true,        // Menyatukan file aset (CSS/JS) agar HTML bisa dibuka secara offline
-    saveAllAttempts: false,
+    inlineAssets: true, 
   },
-  projectId: "6t7fi1",
-
   e2e: {
-    baseUrl: "http://localhost/_Tekkomdik/sistem_manajemen_magang",
+    // 1. Tambahkan waktu tunggu lebih lama
+    pageLoadTimeout: 120000, 
+    // 2. Pastikan baseUrl mengarah ke folder sistem Anda
+    baseUrl: 'http://localhost/_tekkomdik/sistem_manajemen_magang/', 
     setupNodeEvents(on, config) {
-      // implement node event listeners here
-      require('cypress-mochawesome-reporter/plugin')(on); // Plugin report
-    },
-  },
-
-  component: {
-    devServer: {
-      framework: "next",
-      bundler: "webpack",
+      require('cypress-mochawesome-reporter/plugin')(on);
     },
   },
 });

@@ -1,0 +1,23 @@
+Ada sedikit catatan dari dosen mengenai web nya bro
+
+ADMIN :
+1. Data yang pertama masuk dahulu harus diproses dahulu, tidak bisa lompat
+2. Sidebar menu admin bagian Kuota dan Posisi diganti "Kuota Magang"
+3. Arsip diurutkan by kapan action tombol "Selesai" diklik oleh admin, bukan urut by ID
+4. Upload berkas nilai dan sertifikat harus dilakukan sebelum tombol "Selesai" diklik, jika belum diupload (kosong), maka tidak bisa menyelesaikan status magang peserta
+5. Admin utama harus ada Super User, super user memiliki hak akses yang sama dengan admin biasa, tapi super user tidak bisa dihapus oleh akun admin lain atau menghapus dirinya sendiri, tapi bisa menghapus admin lain
+
+PESERTA :
+1. Informasi jumlah kuota tersedia, jika kuota penuh maka peserta tidak bisa mendaftar di menu (Formulir Pendaftaran)
+2. Buat menu di sidebar peserta ada fitur "Cek Posisi dan Kuota" untuk melihat data peserta yang mendaftar berupa tabel yang menampilkan ID Peserta, Periode Magang (tgl mulai - selesai), Timestamp Mendaftar
+
+Fitur Lain :
+1. Algoritma FIFO seharusnya diterapkan berdasarkan periode magang dari kapan sampai kapan, bukan dari waktu klik submit saat daftar 
+2. Pencatatan database agar tidak terjadi selisih harus dicatat sampai milidetik
+3. Ada deadman system, ketika admin lupa menerima atau menolak peserta harus ada periode trigger selama berapa lama hari peserta akan otomatis diterima atau ditolak
+4. Mengacu nomor 3, harus ada sistem yang bisa mendeteksi apaka benar yang diupload adalah surat pengantar (sebagai mandatory document) atau bukan, untuk proposal sifatnya opsional
+
+Bug :
+Ada sedikit bug saya tidak bisa login admin, sekalian mengacu untuk admin nomor 5, buatkan sistem superadmin dan akunnya dengan "username : admin_btkp; pass : abc_123"
+
+Itu catatan saya, bagaimana ?

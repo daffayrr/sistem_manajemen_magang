@@ -7,7 +7,7 @@ echo "<h3>Memulai Pembuatan Akun Tester...</h3>";
 // ==========================================
 // 1. BUAT AKUN ADMIN
 // ==========================================
-$username_admin = "farrasdy";
+$username_admin = "administrator";
 $password_admin = md5("abc_123"); // Password: admin123
 $nama_admin     = "Admin Tester Dev";
 $role_admin     = "Admin";
@@ -38,9 +38,9 @@ echo "<hr>";
 // ==========================================
 // 2. BUAT AKUN PESERTA
 // ==========================================
-$nama_peserta  = "Peserta Tester";
-$email_peserta = "peserta@test.com";
-$pass_peserta  = md5("peserta"); // Password: peserta123
+$nama_peserta  = "Peserta Tester 2";
+$email_peserta = "peserta2@test.com";
+$pass_peserta  = md5("peserta2"); // Password: peserta123
 $hp_peserta    = "08123456789";
 $asal_peserta  = "Universitas Contoh";
 $role_peserta  = "Peserta";
@@ -49,7 +49,7 @@ $role_peserta  = "Peserta";
 $cek_peserta = mysqli_query($koneksi, "SELECT email FROM peserta WHERE email = '$email_peserta'");
 if (mysqli_num_rows($cek_peserta) == 0) {
 
-    $query_peserta = "INSERT INTO peserta (nama_lengkap, email, password, no_hp, asal_instansi, role) 
+    $query_peserta = "INSERT INTO peserta (nama, email, password, no_hp, asal_instansi, role) 
                       VALUES ('$nama_peserta', '$email_peserta', '$pass_peserta', '$hp_peserta', '$asal_peserta', '$role_peserta')";
 
     if (mysqli_query($koneksi, $query_peserta)) {

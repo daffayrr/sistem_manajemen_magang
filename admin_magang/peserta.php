@@ -55,6 +55,7 @@ $keyword       = $_GET['q'] ?? '';
 $search_sql    = !empty($keyword) ? "AND (u.nama LIKE '%$keyword%' OR u.asal_instansi LIKE '%$keyword%')" : "";
 
 // QUERY FIFO, INGATTT
+// BASE SQL : SELECT * FROM pendaftaran ORDER BY tgl_daftar ASC;
 $query = "SELECT p.*, u.nama, u.asal_instansi, u.foto_profil, u.email 
           FROM pendaftaran p
           JOIN peserta u ON p.id_user = u.id_user
