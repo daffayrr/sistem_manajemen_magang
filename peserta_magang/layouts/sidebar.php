@@ -1,7 +1,7 @@
 <div class="sidebar d-flex flex-column">
-<a href="dashboard.php" class="text-decoration-none mb-4 mt-2">
+    <a href="index.php" class="text-decoration-none mb-4 mt-2">
         <div class="d-flex align-items-center px-2 gap-3 text-center">
-        <img src="../assets/logo-btkp.png" alt="Logo BTKP DIY" width="150" class="img-fluid mb-3 " style="filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.15));">
+            <img src="../assets/logo-btkp.png" alt="Logo BTKP DIY" width="150" class="img-fluid mb-3" style="filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.15));">
         </div>
     </a>
     
@@ -28,6 +28,13 @@
             <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'pendaftaran.php' ? 'active' : ''; ?>" href="pendaftaran.php">
                 <i class="fa-solid fa-file-pen"></i> 
                 <span>Formulir Pendaftaran</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'posisi_kuota.php' ? 'active' : ''; ?>" href="posisi_kuota.php">
+                <i class="fa-solid fa-ranking-star"></i> 
+                <span>Cek Posisi dan Kuota</span>
             </a>
         </li>
 

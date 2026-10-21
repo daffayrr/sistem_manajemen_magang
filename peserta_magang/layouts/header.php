@@ -1,3 +1,13 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+// Proteksi Autentikasi Peserta
+if (!isset($_SESSION['status']) || $_SESSION['status'] != 'login' || $_SESSION['role_akses'] != 'Peserta') {
+    header("Location: ../index.php?pesan=belum_login");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
