@@ -1,3 +1,15 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$status_login = $_SESSION['status'] ?? '';
+$role_akses   = $_SESSION['role_akses'] ?? '';
+
+if ($status_login != 'login' || !in_array($role_akses, ['Admin', 'Super Admin'])) {
+    header("Location: ../index.php?pesan=belum_login");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -97,18 +109,18 @@
             border-radius: 8px; 
             transition: all 0.2s; 
             display: flex; 
-            align-items: center; /* Pastikan vertikal di tengah */
+            align-items: center;
         }
 
         /* Style KHUSUS untuk ikon menu agar rapi */
         .nav-link i { 
-            width: 30px;       /* Lebar tetap untuk semua ikon */
-            height: 20px;      /* Tinggi tetap */
-            line-height: 20px; /* Vertikal center dalam kotak ikon */
-            text-align: center;/* Horizontal center dalam kotak ikon */
-            margin-right: 10px;/* Jarak ke teks */
-            flex-shrink: 0;    /* Mencegah ikon gepeng */
-            font-size: 1.1rem; /* Ukuran ikon seragam */
+            width: 30px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            margin-right: 10px;
+            flex-shrink: 0;
+            font-size: 1.1rem;
         }
 
         /* Efek Hover */
@@ -117,7 +129,7 @@
             color: var(--primary-navy); 
         }
         .nav-link:hover i {
-            transform: translateX(2px); /* Efek gerak dikit saat hover */
+            transform: translateX(2px);
             transition: transform 0.2s;
         }
 

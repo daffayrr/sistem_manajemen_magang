@@ -5,43 +5,50 @@ session_start();
 $status_login = $_SESSION['status'] ?? '';
 $role_akses   = $_SESSION['role_akses'] ?? '';
 
-if ($status_login != 'login' || $role_akses != 'Admin') {
+if ($status_login != 'login' || !in_array($role_akses, ['Admin', 'Super Admin'])) {
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
 
-include '../config/database.php';
+require_once '../config/database.php';
 
 /** @var mysqli $koneksi */
 
 $msg_type = "";
 $msg_text = "";
 
-// 2. PROSES SIMPAN DATA
+// 2. PROSES SIMPAN DATA DENGAN PREPARED STATEMENT
 if (isset($_POST['simpan_info'])) {
-    $judul     = mysqli_real_escape_string($koneksi, $_POST['judul']);
-    $deskripsi = mysqli_real_escape_string($koneksi, $_POST['deskripsi']);
+    $judul     = trim($_POST['judul'] ?? '');
+    $deskripsi = trim($_POST['deskripsi'] ?? '');
     
-    // Update data (ID 1 adalah data default)
-    $update = mysqli_query($koneksi, "UPDATE informasi SET judul='$judul', deskripsi='$deskripsi', tgl_update=NOW() WHERE id=1");
-
-    if ($update) {
-        $msg_type = "success";
-        $msg_text = "Informasi dan Pengumuman berhasil diperbarui!";
-    } else {
+    if (empty($judul) || empty($deskripsi)) {
         $msg_type = "danger";
-        $msg_text = "Gagal menyimpan: " . mysqli_error($koneksi);
+        $msg_text = "Judul dan deskripsi informasi tidak boleh kosong.";
+    } else {
+        $stmt_info = mysqli_prepare($koneksi, "UPDATE informasi SET judul = ?, deskripsi = ?, tgl_update = NOW() WHERE id = 1");
+        mysqli_stmt_bind_param($stmt_info, "ss", $judul, $deskripsi);
+
+        if (mysqli_stmt_execute($stmt_info)) {
+            catat_audit($koneksi, $_SESSION['admin_id'], $_SESSION['admin_nama'], 1, 'informasi', 'UPDATE_INFO', null, null, "Memperbarui pengumuman umum: $judul");
+            $msg_type = "success";
+            $msg_text = "Informasi dan Pengumuman berhasil diperbarui!";
+        } else {
+            $msg_type = "danger";
+            $msg_text = "Gagal menyimpan: " . mysqli_error($koneksi);
+        }
+        mysqli_stmt_close($stmt_info);
     }
 }
 
 // 3. AMBIL DATA SAAT INI
-$query = mysqli_query($koneksi, "SELECT * FROM informasi WHERE id=1");
+$query = mysqli_query($koneksi, "SELECT * FROM informasi WHERE id = 1");
 $data  = mysqli_fetch_assoc($query);
 
-// Jika tabel masih kosong (belum di-insert), buat data default otomatis
+// Jika tabel masih kosong, buat data default
 if (!$data) {
     mysqli_query($koneksi, "INSERT INTO informasi (id, judul, deskripsi) VALUES (1, 'Pengumuman Penting', 'Silakan update informasi ini.')");
-    header("Refresh:0"); // Refresh halaman agar data muncul
+    header("Refresh:0");
     exit();
 }
 
@@ -64,7 +71,7 @@ include 'layouts/navbar.php';
             <div class="d-flex align-items-center">
                 <i class="fa-solid <?php echo ($msg_type == 'success') ? 'fa-circle-check' : 'fa-circle-exclamation'; ?> me-2 fa-lg"></i>
                 <div>
-                    <strong><?php echo ($msg_type == 'success') ? 'Berhasil!' : 'Gagal!'; ?></strong> <?php echo $msg_text; ?>
+                    <strong><?php echo ($msg_type == 'success') ? 'Berhasil!' : 'Gagal!'; ?></strong> <?php echo htmlspecialchars($msg_text, ENT_QUOTES, 'UTF-8'); ?>
                 </div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -100,7 +107,7 @@ include 'layouts/navbar.php';
 
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted fst-italic">
-                                Terakhir diupdate: <?php echo date('d M Y, H:i', strtotime($data['tgl_update'])); ?> WIB
+                                Terakhir diupdate: <?php echo !empty($data['tgl_update']) ? date('d M Y, H:i', strtotime($data['tgl_update'])) . ' WIB' : '-'; ?>
                             </small>
                             <button type="submit" name="simpan_info" class="btn btn-primary fw-bold px-4">
                                 <i class="fa-solid fa-save me-2"></i> Simpan Perubahan
@@ -127,7 +134,6 @@ include 'layouts/navbar.php';
                         <div class="card-body bg-white p-3">
                             <p class="card-text small text-secondary" style="white-space: pre-line;">
                                 <?php 
-                                // Potong teks jika terlalu panjang untuk preview
                                 $teks = $data['deskripsi'];
                                 echo (strlen($teks) > 150) ? substr($teks, 0, 150) . '...' : $teks; 
                                 ?>

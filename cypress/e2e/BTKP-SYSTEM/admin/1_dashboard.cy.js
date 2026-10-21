@@ -79,8 +79,8 @@ describe('Testing Fungsionalitas dan Navigasi Dashboard Admin', () => {
       cy.url().should('include', 'peserta.php');
       cy.go('back');
   
-      // Uji klik menu Kuota & Posisi di Sidebar
-      cy.get('.sidebar').contains('Kuota & Posisi').click();
+      // Uji klik menu Kuota Magang di Sidebar
+      cy.get('.sidebar').contains('Kuota Magang').click();
       cy.url().should('include', 'kuota.php');
       cy.go('back');
     });

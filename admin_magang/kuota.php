@@ -5,12 +5,12 @@ session_start();
 $status_login = $_SESSION['status'] ?? '';
 $role_akses   = $_SESSION['role_akses'] ?? '';
 
-if ($status_login != 'login' || $role_akses != 'Admin') {
+if ($status_login != 'login' || !in_array($role_akses, ['Admin', 'Super Admin'])) {
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
 
-include '../config/database.php';
+require_once '../config/database.php';
 
 /** @var mysqli $koneksi */
 
@@ -20,19 +20,31 @@ $msg_text = "";
 // ==========================================================
 // LOGIKA PROSES DATA (UPDATE KUOTA GLOBAL)
 // ==========================================================
-
 if (isset($_POST['update_kuota'])) {
     $kuota_baru = (int) $_POST['jumlah_maks'];
     
-    // Update data kuota di tabel kuota
-    $query = "UPDATE kuota SET jumlah_maks = '$kuota_baru'";
-    
-    if (mysqli_query($koneksi, $query)) {
-        $msg_type = "success"; 
-        $msg_text = "Pengaturan Kuota Global berhasil diperbarui menjadi $kuota_baru orang.";
+    if ($kuota_baru < 1) {
+        $msg_type = "danger";
+        $msg_text = "Jumlah kuota maksimal minimal 1 orang.";
     } else {
-        $msg_type = "danger"; 
-        $msg_text = "Gagal memperbarui kuota: " . mysqli_error($koneksi);
+        // Ambil kuota sebelumnya untuk audit
+        $q_old = mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota WHERE id_kuota = 1 LIMIT 1");
+        $d_old = mysqli_fetch_assoc($q_old);
+        $old_val = (int) ($d_old['jumlah_maks'] ?? 0);
+
+        // Update data kuota di tabel kuota dengan Prepared Statement
+        $stmt_kuota = mysqli_prepare($koneksi, "UPDATE kuota SET jumlah_maks = ? WHERE id_kuota = 1");
+        mysqli_stmt_bind_param($stmt_kuota, "i", $kuota_baru);
+        
+        if (mysqli_stmt_execute($stmt_kuota)) {
+            catat_audit($koneksi, $_SESSION['admin_id'], $_SESSION['admin_nama'], 1, 'kuota', 'UPDATE_KUOTA', (string)$old_val, (string)$kuota_baru, "Mengubah kuota global dari $old_val menjadi $kuota_baru");
+            $msg_type = "success"; 
+            $msg_text = "Pengaturan Kuota Global berhasil diperbarui menjadi $kuota_baru orang.";
+        } else {
+            $msg_type = "danger"; 
+            $msg_text = "Gagal memperbarui kuota: " . mysqli_error($koneksi);
+        }
+        mysqli_stmt_close($stmt_kuota);
     }
 }
 
@@ -41,14 +53,14 @@ if (isset($_POST['update_kuota'])) {
 // ==========================================================
 
 // 1. Ambil nilai kuota maksimal
-$query_kuota = mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota LIMIT 1");
+$query_kuota = mysqli_query($koneksi, "SELECT jumlah_maks FROM kuota WHERE id_kuota = 1 LIMIT 1");
 $data_kuota = mysqli_fetch_assoc($query_kuota);
-$kuota_sekarang = $data_kuota['jumlah_maks'] ?? 0;
+$kuota_sekarang = (int) ($data_kuota['jumlah_maks'] ?? 0);
 
 // 2. Ambil jumlah peserta yang saat ini sedang aktif (Diterima)
 $query_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status = 'Diterima'");
 $data_aktif  = mysqli_fetch_assoc($query_aktif);
-$jumlah_aktif = $data_aktif['total'];
+$jumlah_aktif = (int) ($data_aktif['total'] ?? 0);
 
 // 3. Hitung sisa
 $sisa_kuota = $kuota_sekarang - $jumlah_aktif;
@@ -70,7 +82,7 @@ include 'layouts/navbar.php';
     <?php if (!empty($msg_type)): ?>
         <div class="alert alert-<?php echo $msg_type; ?> alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
             <i class="fa-solid <?php echo ($msg_type == 'success') ? 'fa-circle-check' : 'fa-circle-exclamation'; ?> me-2"></i>
-            <?php echo $msg_text; ?>
+            <?php echo htmlspecialchars($msg_text, ENT_QUOTES, 'UTF-8'); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
@@ -79,7 +91,7 @@ include 'layouts/navbar.php';
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-header bg-white py-3 border-bottom">
-                    <h6 class="fw-bold m-0 text-dark"><i class="fa-solid fa-gear me-2 text-primary"></i> Konfigurasi Sistem</h6>
+                    <h6 class="fw-bold m-0 text-dark"><i class="fa-solid fa-gear me-2 text-primary"></i> Konfigurasi Sistem Kuota</h6>
                 </div>
                 <div class="card-body p-4">
                     

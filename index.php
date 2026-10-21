@@ -2,12 +2,14 @@
 session_start();
 // Cek jika sudah login, langsung arahkan sesuai role
 if (isset($_SESSION['status']) && $_SESSION['status'] == "login") {
-    if ($_SESSION['role'] == "Super Admin") {
+    $role = $_SESSION['role'] ?? $_SESSION['role_akses'] ?? '';
+    if ($role == "Super Admin" || $role == "Admin") {
         header("Location: admin_magang/dashboard.php");
-    } else if ($_SESSION['role'] == "Peserta") {
+        exit;
+    } else if ($role == "Peserta") {
         header("Location: peserta_magang/index.php");
+        exit;
     }
-    exit;
 }
 ?>
 <!DOCTYPE html>

@@ -24,7 +24,7 @@
 
         <li class="nav-item">
             <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'kuota.php' ? 'active' : ''; ?>" href="kuota.php">
-                <i class="fa-solid fa-chart-pie"></i> Kuota & Posisi
+                <i class="fa-solid fa-chart-pie"></i> Kuota Magang
             </a>
         </li>
 

@@ -7,12 +7,12 @@ session_start();
 $status_login = $_SESSION['status'] ?? '';
 $role_akses   = $_SESSION['role_akses'] ?? '';
 
-if ($status_login != 'login' || $role_akses != 'Admin') {
+if ($status_login != 'login' || !in_array($role_akses, ['Admin', 'Super Admin'])) {
     header("Location: ../index.php?pesan=belum_login");
     exit();
 }
 
-include '../config/database.php';
+require_once '../config/database.php';
 
 /** @var mysqli $koneksi */
 
@@ -23,12 +23,12 @@ include '../config/database.php';
 // A. Ambil Data KUOTA GLOBAL
 $query_kuota = mysqli_query($koneksi, "SELECT jumlah_maks, sisa_kuota FROM kuota WHERE id_kuota = 1");
 $data_kuota  = mysqli_fetch_assoc($query_kuota);
-$jumlah_maksimal = $data_kuota['jumlah_maks'] ?? 0;
+$jumlah_maksimal = (int) ($data_kuota['jumlah_maks'] ?? 0);
 
 // B. Hitung Peserta Aktif (Status 'Diterima' dan belum 'Selesai')
 $query_aktif = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status = 'Diterima'");
 $data_aktif  = mysqli_fetch_assoc($query_aktif);
-$jumlah_aktif = $data_aktif['total'];
+$jumlah_aktif = (int) ($data_aktif['total'] ?? 0);
 
 // C. Hitung Sisa Kuota Dinamis
 $sisa_kuota = $jumlah_maksimal - $jumlah_aktif;
@@ -36,15 +36,15 @@ $sisa_kuota = $jumlah_maksimal - $jumlah_aktif;
 // D. Hitung Jumlah MENUNGGU VERIFIKASI
 $query_waiting = mysqli_query($koneksi, "SELECT COUNT(*) as total FROM pendaftaran WHERE status = 'Menunggu'");
 $data_waiting  = mysqli_fetch_assoc($query_waiting);
-$jumlah_menunggu = $data_waiting['total'];
+$jumlah_menunggu = (int) ($data_waiting['total'] ?? 0);
 
 // E. Ambil Data Antrean FIFO (First In First Out)
-// Menampilkan pendaftar yang belum diverifikasi, diurutkan dari yang paling lama mendaftar
+// Menampilkan pendaftar yang belum diverifikasi, diurutkan dari yang paling lama mendaftar (timestamp ASC + deterministic tie-breaker id_daftar ASC)
 $query_fifo = "SELECT p.id_daftar, p.tgl_daftar, p.tanggal_mulai, p.tanggal_selesai, u.nama, u.asal_instansi 
                FROM pendaftaran p
                JOIN peserta u ON p.id_user = u.id_user
                WHERE p.status = 'Menunggu'
-               ORDER BY p.tgl_daftar ASC 
+               ORDER BY p.tgl_daftar ASC, p.id_daftar ASC 
                LIMIT 5"; 
 $result_fifo = mysqli_query($koneksi, $query_fifo);
 
@@ -206,7 +206,7 @@ include 'layouts/navbar.php';
                         </li>
                         <li class="d-flex justify-content-between mb-3">
                             <span class="text-muted">Algoritma</span>
-                            <span class="fw-bold text-dark">FIFO (Date ASC)</span>
+                            <span class="fw-bold text-dark">FIFO (Date ASC + Deterministic)</span>
                         </li>
                         <li class="d-flex justify-content-between mb-3">
                             <span class="text-muted">Versi PHP</span>
@@ -214,7 +214,7 @@ include 'layouts/navbar.php';
                         </li>
                         <li>
                             <span class="text-muted d-block mb-1">Server Time</span>
-                            <code class="text-primary"><?php echo date('d-m-Y H:i'); ?> WIB</code>
+                            <code class="text-primary"><?php echo date('d-m-Y H:i:s'); ?> WIB</code>
                         </li>
                     </ul>
                 </div>

@@ -154,7 +154,7 @@
 
         <li class="nav-item">
             <a class="nav-link" href="kuota.php">
-                <i class="fa-solid fa-chart-pie"></i> Kuota & Posisi
+                <i class="fa-solid fa-chart-pie"></i> Kuota Magang
             </a>
         </li>
 
