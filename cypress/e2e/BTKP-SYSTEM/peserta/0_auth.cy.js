@@ -1,4 +1,4 @@
-describe('Testing Autentikasi dan Dashboard Admin', () => {
+describe('Testing Autentikasi dan Dashboard Peserta', () => {
   
     beforeEach(() => {
       // Memastikan setiap test dimulai dari halaman login utama
@@ -20,7 +20,7 @@ describe('Testing Autentikasi dan Dashboard Admin', () => {
       cy.url().should('not.include', 'peserta_magang/index.php');
     });
   
-    it('TC-02: Berhasil login dan masuk ke Dashboard Admin', () => {
+    it('TC-02: Berhasil login dan masuk ke Dashboard Peserta', () => {
       // Sesuaikan username dan password dengan data di database (tabel admin)
       cy.get('input[name="username"]').type('farras.yassarramadhan@toscaflow.id'); 
       cy.get('input[name="password"]').type('abc_123');

@@ -16,20 +16,18 @@ describe('Testing Fungsionalitas dan Navigasi Halaman Kelola Peserta', () => {
       // 1. Klik filter Diterima menggunakan target URL href (Paling Aman)
       cy.get('a[href="peserta.php?filter=Diterima"]').click();
       cy.url().should('include', 'filter=Diterima');
-      cy.go('back'); // Kembali ke halaman peserta awal
   
       // 2. Klik filter Ditolak
       cy.get('a[href="peserta.php?filter=Ditolak"]').click();
       cy.url().should('include', 'filter=Ditolak');
-      cy.go('back');
   
       // 3. Klik filter Arsip (Selesai)
       cy.get('a[href="peserta.php?filter=Selesai"]').click();
       cy.url().should('include', 'filter=Selesai');
-      cy.go('back');
   
-      // Memastikan berhasil ditarik kembali ke halaman utama peserta
-      cy.url().should('include', '/admin_magang/peserta.php');
+      // 4. Klik kembali ke filter Menunggu
+      cy.get('a[href="peserta.php?filter=Menunggu"]').click();
+      cy.url().should('include', 'filter=Menunggu');
     });
   
     it('TC-02: Menguji fungsionalitas kotak Pencarian (Search)', () => {
