@@ -1,4 +1,4 @@
-describe('Testing Fungsionalitas Pengaturan Kuota Admin', () => {
+describe('Testing Fungsionalitas Pengaturan Kuota Admin & Deadman System', () => {
   
     beforeEach(() => {
       // Skenario bypass login
@@ -56,5 +56,46 @@ describe('Testing Fungsionalitas Pengaturan Kuota Admin', () => {
       // Memastikan berhasil kembali ke dashboard
       cy.url().should('include', '/admin_magang/dashboard.php');
     });
+
+    it('TC-03: Memvalidasi keberadaan Komponen Pengaturan Deadman System pada kuota.php', () => {
+      cy.contains('Pengaturan Deadman System').should('be.visible');
+      cy.get('input[name="deadman_enabled"]').should('exist');
+      cy.get('input[name="deadman_threshold_days"]').should('be.visible');
+      cy.get('select[name="deadman_action"]').should('be.visible');
+      cy.get('button[name="update_deadman"]').should('be.visible');
+    });
+
+    it('TC-04: Mengonfigurasi Deadman System dan Memvalidasi Persistensi Pengaturan di Database', () => {
+      // 1. Aktifkan toggle switch jika belum tercentang
+      cy.get('input[name="deadman_enabled"]').then(($switch) => {
+        if (!$switch.is(':checked')) {
+          cy.get('label[for="deadmanSwitch"]').click();
+        }
+      });
+
+      // 2. Set threshold hari menjadi 7
+      cy.get('input[name="deadman_threshold_days"]').clear().type('7');
+
+      // 3. Pilih kebijakan tindakan: AUDIT_ONLY
+      cy.get('select[name="deadman_action"]').select('AUDIT_ONLY');
+
+      // 4. Simpan Pengaturan Deadman
+      cy.get('button[name="update_deadman"]').click();
+
+      // 5. Validasi Alert Sukses
+      cy.get('.alert-success')
+        .should('be.visible')
+        .and('contain', 'Pengaturan Deadman System berhasil diperbarui');
+
+      // 6. Validasi bahwa nilai tetap persisten
+      cy.get('input[name="deadman_threshold_days"]').should('have.value', '7');
+      cy.get('select[name="deadman_action"]').should('have.value', 'AUDIT_ONLY');
+      cy.get('input[name="deadman_enabled"]').should('be.checked');
+      cy.contains('Sistem Aktif').should('be.visible');
+    });
+
+    it('TC-05: Memastikan Kuota Global Tetap Terkunci pada Angka 4 Sesuai Skripsi', () => {
+      cy.get('input[name="jumlah_maks"]').should('have.value', '4');
+    });
   
-  });
+});

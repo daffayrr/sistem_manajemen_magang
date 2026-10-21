@@ -39,6 +39,39 @@ class DeadmanSystem {
     }
 
     /**
+     * Memuat konfigurasi Deadman System langsung dari tabel kuota di database
+     * 
+     * @param mysqli $koneksi
+     * @return DeadmanSystem
+     */
+    public static function fromDatabase($koneksi) {
+        $q = mysqli_query($koneksi, "SELECT deadman_enabled, deadman_threshold_days, deadman_action FROM kuota WHERE id_kuota = 1 LIMIT 1");
+        $d = mysqli_fetch_assoc($q);
+        
+        $enabled   = (int) ($d['deadman_enabled'] ?? 0);
+        $threshold = (int) ($d['deadman_threshold_days'] ?? self::DEFAULT_THRESHOLD_DAYS);
+        $action    = $d['deadman_action'] ?? 'AUDIT_ONLY';
+
+        // Jika fitur dinonaktifkan oleh admin (toggle off) atau kebijakannya AUDIT_ONLY,
+        // sistem selalu berjalan dalam mode DRY-RUN (simulasi aman tanpa perubahan status)
+        $dryRun = ($enabled === 0 || $action === 'AUDIT_ONLY');
+
+        return new self($koneksi, $dryRun, $threshold, $action);
+    }
+
+    public function isDryRun() {
+        return $this->dryRun;
+    }
+
+    public function getThresholdDays() {
+        return $this->thresholdDays;
+    }
+
+    public function getActionPolicy() {
+        return $this->actionPolicy;
+    }
+
+    /**
      * Mengambil daftar pendaftaran yang telah melewati tenggat waktu
      * Pengurutan konsisten menggunakan FIFO Periode Magang
      */

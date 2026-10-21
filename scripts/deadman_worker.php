@@ -17,16 +17,24 @@ if (php_sapi_name() !== 'cli') {
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/DeadmanSystem.php';
 
-// Parse CLI options
+// Parse CLI options & Muat Konfigurasi Persisten dari Database (kuota.php)
 $options = getopt("", ["dry-run::", "days::", "policy::"]);
 
-$dryRun = true;
-if (isset($options['dry-run']) && ($options['dry-run'] === '0' || $options['dry-run'] === 'false')) {
-    $dryRun = false;
-}
+$dbDeadman = DeadmanSystem::fromDatabase($koneksi);
+$dryRun        = $dbDeadman->isDryRun();
+$thresholdDays = $dbDeadman->getThresholdDays();
+$policy        = $dbDeadman->getActionPolicy();
 
-$thresholdDays = isset($options['days']) ? (int) $options['days'] : DeadmanSystem::DEFAULT_THRESHOLD_DAYS;
-$policy        = isset($options['policy']) ? strtoupper($options['policy']) : 'AUDIT_ONLY';
+// Override melalui argumen CLI jika diberikan
+if (isset($options['dry-run'])) {
+    $dryRun = !($options['dry-run'] === '0' || $options['dry-run'] === 'false');
+}
+if (isset($options['days'])) {
+    $thresholdDays = (int) $options['days'];
+}
+if (isset($options['policy'])) {
+    $policy = strtoupper($options['policy']);
+}
 
 echo "========================================================\n";
 echo " DEADMAN SYSTEM SCHEDULER — BTKP DIY\n";
